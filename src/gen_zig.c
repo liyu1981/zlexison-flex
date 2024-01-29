@@ -508,27 +508,25 @@ void gen_find_action (void)
 		indent_puts ("yy_act = yy_accept[yy_current_state];");
 
 	else if (reject) {
-		indent_puts ("yy_current_state = *--YY_G(yy_state_ptr);");
+		indent_puts ("YY_G(yy_state_ptr) -= 1;");
+		indent_puts ("yy_current_state = YY_G(yy_state_ptr).*;");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
 		if (!variable_trailing_context_rules)
 			outn ("m4_ifdef( [[M4_YY_USES_REJECT]],\n[[");
 		if(reject_really_used)
-			outn ("find_rule: /* we branch to this label when backing up */");
+			outn ("find_rule: while(true) { // /* we branch to this label when backing up */");
 		if (!variable_trailing_context_rules)
 			outn ("]])\n");
 
 		indent_puts
-			("for ( ; ; ) /* until we find what rule we matched */");
+			("while(true) { // /* until we find what rule we matched */");
 
 		++indent_level;
-
-		indent_puts ("{");
 
 		indent_puts
-			("if ( YY_G(yy_lp) && YY_G(yy_lp) < yy_accept[yy_current_state + 1] )");
+			("if ( YY_G(yy_lp) and YY_G(yy_lp) < yy_accept[yy_current_state + 1] ) {");
 		++indent_level;
-		indent_puts ("{");
 		indent_puts ("yy_act = yy_acclist[YY_G(yy_lp)];");
 
 		if (variable_trailing_context_rules) {
@@ -604,13 +602,14 @@ void gen_find_action (void)
 		indent_puts ("}");
 		--indent_level;
 
-		indent_puts ("--yy_cp;");
+		indent_puts ("yy_cp -= 1;");
 
 		/* We could consolidate the following two lines with those at
 		 * the beginning, but at the cost of complaints that we're
 		 * branching inside a loop.
 		 */
-		indent_puts ("yy_current_state = *--YY_G(yy_state_ptr);");
+		indent_puts ("YY_G(yy_state_ptr) -= 1;");
+		indent_puts ("yy_current_state = YY_G(yy_state_ptr).*;");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
 		indent_puts ("}");
@@ -716,7 +715,7 @@ void genftbl (void)
 
 void gen_next_compressed_state (char *char_map)
 {
-	indent_put2s ("YY_CHAR yy_c = %s;", char_map);
+	indent_put2s ("var yy_c:u8 = %s;", char_map);
 
 	/* Save the backing-up info \before/ computing the next state
 	 * because we always compute one more state than needed - we
@@ -728,7 +727,7 @@ void gen_next_compressed_state (char *char_map)
 		("while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )");
 	++indent_level;
 	indent_puts ("{");
-	indent_puts ("yy_current_state = (int) yy_def[yy_current_state];");
+	indent_puts ("yy_current_state = yy_def[yy_current_state];");
 
 	if (usemecs) {
 		/* We've arrange it so that templates are never chained
@@ -770,6 +769,7 @@ void gen_next_match (void)
 		"yy_ec[YY_SC_TO_UI(*++yy_cp)] " : "YY_SC_TO_UI(*++yy_cp)";
 
 	if (fulltbl) {
+		indent_puts("@compileError(\"not support fulltbl yet!\");");
 		if (gentables)
 			indent_put2s
 				("while ( (yy_current_state = yy_nxt[yy_current_state][ %s ]) > 0 )",
@@ -800,6 +800,7 @@ void gen_next_match (void)
 	}
 
 	else if (fullspd) {
+		indent_puts("@compileError(\"not support fullspd yet!\");");
 		indent_puts ("{");
 		indent_puts
 			("const struct yy_trans_info *yy_trans_info;\n");
@@ -828,14 +829,14 @@ void gen_next_match (void)
 	}
 
 	else {			/* compressed */
-		indent_puts ("do");
+		// indent_puts ("do");
 
 		++indent_level;
-		indent_puts ("{");
+		indent_puts (" while(true) {");
 
 		gen_next_state (false);
 
-		indent_puts ("++yy_cp;");
+		indent_puts ("yy_cp += 1;");
 
 
 		indent_puts ("}");
@@ -844,12 +845,13 @@ void gen_next_match (void)
 		do_indent ();
 
 		if (interactive)
-			out_dec ("while ( yy_base[yy_current_state] != %d );\n", jambase);
+			out_dec ("if ( yy_base[yy_current_state] == %d ) break;\n", jambase);
 		else
-			out_dec ("while ( yy_current_state != %d );\n",
-				 jamstate);
+			out_dec ("if ( yy_current_state == %d ) break;\n",
+					jamstate);
 
 		if (!reject && !interactive) {
+			indent_puts("@compileError(\"not support disable reject & interactive same time!\");");
 			/* Do the guaranteed-needed backing up to figure out
 			 * the match.
 			 */
@@ -871,11 +873,11 @@ void gen_next_state (int worry_about_NULs)
 	if (worry_about_NULs && !nultrans) {
 		if (useecs)
 			snprintf (char_map, sizeof(char_map),
-					"(*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : %d)",
+					"if(yy_cp.* == 0) yy_ec[YY_SC_TO_UI(*yy_cp)] else %d",
 					NUL_ec);
 		else
             snprintf (char_map, sizeof(char_map),
-					"(*yy_cp ? YY_SC_TO_UI(*yy_cp) : %d)",
+					"if(yy_cp.* == 0) YY_SC_TO_UI(*yy_cp) else %d",
 					NUL_ec);
 	}
 
@@ -895,6 +897,7 @@ void gen_next_state (int worry_about_NULs)
 	}
 
 	if (fulltbl) {
+		indent_puts("@compileError(\"not support fulltbl yet!\");");
 		if (gentables)
 			indent_put2s
 				("yy_current_state = yy_nxt[yy_current_state][%s];",
@@ -905,11 +908,12 @@ void gen_next_state (int worry_about_NULs)
 				 char_map);
 	}
 
-	else if (fullspd)
+	else if (fullspd) {
+		indent_puts("@compileError(\"not support fullspd yet!\");");
 		indent_put2s
 			("yy_current_state += yy_current_state[%s].yy_nxt;",
 			 char_map);
-
+	}
 	else
 		gen_next_compressed_state (char_map);
 
@@ -927,8 +931,10 @@ void gen_next_state (int worry_about_NULs)
 	if (fullspd || fulltbl)
 		gen_backing_up ();
 
-	if (reject)
-		indent_puts ("*YY_G(yy_state_ptr)++ = yy_current_state;");
+	if (reject) {
+		indent_puts ("YY_G(yy_state_ptr).* = yy_current_state;");
+		indent_puts ("YY_G(yy_state_ptr) += 1;");
+	}
 }
 
 
@@ -996,7 +1002,8 @@ void gen_NUL_trans (void)
 			indent_puts ("if ( ! yy_is_jam )");
 			++indent_level;
 			indent_puts
-				("*YY_G(yy_state_ptr)++ = yy_current_state;");
+				("YY_G(yy_state_ptr).* = yy_current_state;");
+			indent_puts ("YY_G(yy_state_ptr) += 1;");
 			--indent_level;
 		}
 	}
@@ -1043,7 +1050,9 @@ void gen_start_state (void)
 			indent_puts
 				("YY_G(yy_state_ptr) = YY_G(yy_state_buf);");
 			indent_puts
-				("*YY_G(yy_state_ptr)++ = yy_current_state;");
+				("YY_G(yy_state_ptr).* = yy_current_state;");
+			indent_puts
+				("YY_G(yy_state_ptr) += 1;");
 			outn ("]])");
 		}
 	}
@@ -1305,7 +1314,7 @@ void gentabs (void)
 	total_states = lastdfa + numtemps;
 
 	/* Begin generating yy_base */
-	out_str_dec("const %s: [_]i16 = [%d]i16 = { 0, \n", "yy_base", total_states + 1);
+	out_str_dec("const %s: [_]i16 = [%d]i16{ 0, \n", "yy_base", total_states + 1);
 	// out_str_dec ((tblend >= INT16_MAX || long_align) ?
 	// 	     get_int32_decl () : get_int16_decl (),
 	// 	     "yy_base", total_states + 1);
@@ -1899,8 +1908,10 @@ void make_tables (void)
 			outn ("\t\t\tif (c == '\\n') break;");
 			outn ("\t\t}");
 			outn ("\t\t\tbuf[n] = c;");
-			outn ("\t\tif ( c == '\\n' )");
-			outn ("\t\t\tbuf[n++] = c;");
+			outn ("\t\tif ( c == '\\n' ) {");
+			outn ("\t\t\tbuf[n] = c;");
+			outn ("\t\t\tn += 1;");
+			outn ("\t\t}");
 			outn ("\t\tresult.* = n;");
 			outn ("\t\t} else {");
 			outn ("\t\t\t  result.* = try yyg.yyin_r.reader().readNoEof(buf[0..max_size]);");
@@ -1952,7 +1963,7 @@ void make_tables (void)
 	gen_start_state ();
 
 	/* Note, don't use any indentation. */
-	outn ("yy_match:");
+	outn ("yy_match: while(true) {");
 	gen_next_match ();
 
 	skelout ();		/* %% [10.0] - break point in skel */
@@ -1962,19 +1973,19 @@ void make_tables (void)
 	skelout ();		/* %% [11.0] - break point in skel */
 	outn ("m4_ifdef( [[M4_YY_USE_LINENO]],[[");
 	indent_puts
-		("if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )");
+		("if ( yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] ) {");
 	++indent_level;
-	indent_puts ("{");
-	indent_puts ("int yyl;");
-	do_indent ();
-	out_str ("for ( yyl = %s; yyl < yyleng; ++yyl )\n",
+	out_str ("var yyl: c_int = %s;\n",
 		 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
 				"YY_G(yy_more_len)") : "0");
+	do_indent ();
+	outn ("while(yyl < yyleng) : (yyl += 1) {");
 	++indent_level;
 	indent_puts ("if ( yytext[yyl] == '\\n' )");
 	++indent_level;
-	indent_puts ("M4_YY_INCR_LINENO();");
+	indent_puts ("M4_YY_INCR_LINENO()");
 	--indent_level;
+	indent_puts ("}");
 	--indent_level;
 	indent_puts ("}");
 	--indent_level;
@@ -2137,16 +2148,17 @@ void make_tables (void)
 			indent_puts
 				("if ( YY_CURRENT_BUFFER_LVALUE->yy_at_bol )");
 			++indent_level;
-			indent_puts ("M4_YY_INCR_LINENO();");
+			indent_puts ("M4_YY_INCR_LINENO()");
 			--indent_level;
 		}
 	}
 
 	else if (do_yylineno) {
-		indent_puts ("if ( c == '\\n' )");
+		indent_puts ("if ( c == '\\n' ) {");
 		++indent_level;
-		indent_puts ("M4_YY_INCR_LINENO();");
+		indent_puts ("M4_YY_INCR_LINENO()");
 		--indent_level;
+		indent_puts ("}");
 	}
 
 	skelout ();
