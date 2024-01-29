@@ -35,7 +35,7 @@ m4_changequote([[, ]])
 %#   edit the skeleton.
 %#
 
-pub const version: [_]u8 = [3]u8{FLEX_MAJOR_VERSION, FLEX_MINOR_VERSION, FLEX_SUBMINOR_VERSION};
+pub const version = [3]u8{FLEX_MAJOR_VERSION, FLEX_MINOR_VERSION, FLEX_SUBMINOR_VERSION};
 
 %# Some negated symbols
 m4_ifdef( [[M4_YY_IN_HEADER]], , [[m4_define([[M4_YY_NOT_IN_HEADER]], [[]])]])
@@ -60,13 +60,20 @@ pub const EOB_ACT_CONTINUE_SCAN = 0;
 pub const EOB_ACT_END_OF_FILE = 1;
 pub const EOB_ACT_LAST_MATCH = 2;
 
+pub extern fn yywrap (yyg: *yyguts_t) usize;
+pub extern fn YY_USER_ACTION(this: *Self) anyerror!void;
+pub extern fn YY_USER_INIT(this: *Self) anyerror!void;
+pub const YYSTYPE = opaque{};
+pub const YYLTYPE = opaque{};
+pub const YY_EXTRA_TYPE = struct{};
+
 %# /* Promotes a possibly negative, possibly signed char to an
 %# *   integer in range [0..255] for use as an array index.
 %# */
 pub inline fn YY_SC_TO_UI(comptime T:type, c: T) u8 { return c; }
 
 allocator: std.mem.Allocator = undefined,
-yyg: *yyguts = undefined,
+yyg: *yyguts_t = undefined,
 
 %# Declare yyguts variable
 m4_define( [[M4_YY_DECL_GUTS_VAR]], [[var yyg: *yyguts_t = @as(*yyguts_t, @ptrCast(yyscanner))]])
@@ -111,10 +118,11 @@ pub fn YY_START(this: *Self) usize {
     return (this.yyg.yy_start - 1) / 2;
 }
 
-pub const YYSTATE = YY_SATRT;
+pub const YYSTATE = YY_START;
 
 /// Action number for EOF rule of a given start state.
 pub inline fn YY_STATE_EOF(this: *Self, state: usize) usize {
+    _ = this;
     return Self.YY_END_OF_BUFFER + state + 1;
 }
 
@@ -125,7 +133,7 @@ pub inline fn YY_NEW_FILE(yyg: *yyguts_t) void {
 
 /// The state buf must be large enough to hold one state per character in the
 /// main buffer.
-pub const YY_STATE_BUF_SIZE = (YY_BUF_SIZE + 2) * @sizeOf(yy_state_type);
+pub const YY_STATE_BUF_SIZE = (YY_BUF_SIZE + 2) * @sizeOf(usize);
 
 m4_ifdef( [[M4_YY_USE_LINENO]],
 [[
@@ -136,12 +144,18 @@ m4_ifdef( [[M4_YY_USE_LINENO]],
 /// performance hit in a non-yylineno scanner, because yy_act is normally
 /// declared as a register variable-- so it is not worth it.
 pub inline fn YY_LESS_LINENO(n: usize, yyg: *yyguts_t) void {
-    for (n..yyg.yyleng_r) |yyl| if (yyg.yytext_r[yyl] == '\n') yyg.yylineno_r -= 1;
+    for (n..yyg.yyleng_r) |yyl| {
+        if (yyg.yytext_r[yyl] == '\n')
+            yyg.yylineno_r -= 1;
+    }
 }
 
-pub fn YY_LINENO_REWIND_TO(dst: [*c]u8) void {
-    var p: [*c]u8 = yy_cp - 1;
-    while (p >= dst) : (p -= 1) if (*p == '\n') yylineno -= 1;
+pub fn YY_LINENO_REWIND_TO(dst: [*c]u8, yyg: *yyguts_t) void {
+    var p: [*c]u8 = yyg.yy_cp - 1;
+    while (p >= dst) : (p -= 1) {
+        if (*p == '\n')
+            yyg.yylineno -= 1;
+    }
 }
 ]],
 [[
@@ -152,10 +166,10 @@ pub fn yyless(n: usize, yyg: *yyguts_t) void {
 	// Undo effects of setting up yytext.
     YY_LESS_LINENO(n, yyg);
 	var yy_cp = yyg.yy_hold_char;
-    yy_cp = yy_bp + n - yyg.yy_more_len;
+    yy_cp = yyg.yy_bp + n - yyg.yy_more_len;
 	yyg.yy_c_buf_p = yy_cp;
     // TODO: definitely with problem
-	YY_DO_BEFORE_ACTION(yyg); // /* set up yytext again */
+	YY_DO_BEFORE_ACTION(yyg); // set up yytext again
 }
 
 pub inline fn unput(c: u8, yyg: *yyguts_t) void {
@@ -210,30 +224,15 @@ pub const yy_buffer_state = struct {
     pub const YY_BUFFER_EOF_PENDING = 2;
 };
 
-/// We provide macros for accessing buffer states in case in the future we want
-/// to put the buffer states in a more general "scanner state".
-/// Returns the top of the stack, or NULL.
-pub fn YY_CURRENT_BUFFER(yyg: *yyguts_t) [*c]yy_buffer_stack {
-    if(yyg.yy_buffer_stack != 0) {
-        return &yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-    } else return 0;
-}
-
-// /* Same as previous macro, but useful when we know that the buffer stack is not
-//  * NULL or when we need an lvalue. For internal use only.
-//  */
-// pub fn YY_CURRENT_BUFFER_LVALUE(yyg: *yyguts_t) *[*c]u8 {
-//    return &yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-// }
-
 pub inline fn YY_FLUSH_BUFFER(yyg: *yyguts_t) void {
-    yy_flush_buffer(YY_CURRENT_BUFFER(yyg), yyg);
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+    yy_flush_buffer(yy_current_buffer, yyg);
 }
 
 pub const yy_new_buffer = yy_create_buffer;
 
 pub fn yy_set_interactive(is_interactive: bool, yyg: *yyguts_t) !void {
-    const yy_current_buffer = YY_CURRENT_BUFFER(yyg);
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	if (yy_current_buffer != 0) {
         yyensure_buffer_stack(yyg);
         yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].* = try yy_create_buffer(yyg.yyin, YY_BUF_SIZE, yyg);
@@ -242,7 +241,7 @@ pub fn yy_set_interactive(is_interactive: bool, yyg: *yyguts_t) !void {
 }
 
 pub fn yy_set_bol(at_bol: bool, yyg: *yyguts_t) void {
-    const yy_current_buffer = YY_CURRENT_BUFFER(yyg);
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	if (yy_current_buffer != 0) {
         yyensure_buffer_stack(yyg);
         yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].* = try yy_create_buffer(yyg.yyin, YY_BUF_SIZE, yyg);
@@ -266,7 +265,7 @@ pub fn YY_DO_BEFORE_ACTION(yy_cp_: *[*c]u8, yy_bp_: *[*c]u8, yyg: *yyguts_t) voi
 	yyg.yytext_r = yy_bp;
 %% [2.0] code to fiddle yytext and yyleng for yymore() goes here
 	yyg.yy_hold_char = yy_cp.*;
-	yy_cp_.*.* = '\0';
+	yy_cp_.*.* = 0;
 %% [3.0] code to copy yytext_ptr to yytext[] goes here, if %array
 	yyg.yy_c_buf_p = yy_cp;
 }
@@ -287,7 +286,7 @@ pub const yyguts_t = struct {
     yy_buffer_stack: [*c][*c]yy_buffer_state = 0, // /**< Stack as an array. */
     yy_hold_char: u8 = undefined,
     yy_n_chars: usize = 0,
-    yyleng_r: uszie = 0,
+    yyleng_r: usize = 0,
     yy_c_buf_p: [*c]u8 = 0,
     yy_init: bool = undefined,
     yy_start: usize = 0,
@@ -351,9 +350,9 @@ pub fn ECHO(yyg: *yyguts_t) !void {
 }
 
 // TODO:
-// /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
-//  * is returned in "result".
-//  */
+/// Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
+/// is returned in "result".
+///
 pub fn YY_INPUT(buf: [*c]u8, result: *c_int, max_size: usize, yyg: *yyguts_t) void {
 %% [5.0] fread()/read() definition of YY_INPUT goes here unless we're doing C++ \
 
@@ -411,20 +410,26 @@ pub fn yylex M4_YY_LEX_PROTO !void {
     m4_ifdef( [[M4_YY_BISON_LVAL]],
     [[
     var yylval: *YYSTYPE = yylval_param;
+    {
+        _ = &yylval;
+    }
     ]])
 
     m4_ifdef( [[<M4_YY_BISON_LLOC>]],
     [[
     var yylloc: *YYLTYPE = yylloc_param;
+    {
+        _ = &yylloc;
+    }
     ]])
 
 	if (!yyg.yy_init) {
 		yyg.yy_init = true;
-		YY_USER_INIT(this);
+		try YY_USER_INIT(this);
 
-		if (YY_CURRENT_BUFFER(yyg) != 0) {
+		if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] != 0) {
 		    yyensure_buffer_stack(yyg);
-            yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].* = try yy_create_buffer( yyin, YY_BUF_SIZE, yyg);
+            yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].* = try yy_create_buffer(yyg.yyin, YY_BUF_SIZE, yyg);
 		}
 
 		yy_load_buffer_state(yyg);
@@ -433,7 +438,7 @@ pub fn yylex M4_YY_LEX_PROTO !void {
 	{ // core loop
 %% [7.0] user's declarations go here
 
-	    end_of_file: while (true) { // /* loops until end-of-file is reached */
+	    while (true) { // /* loops until end-of-file is reached */
             // LOOP_START_INIT
             if (loop_control & LOOP_START_INIT > 0) {
                 // yymore()-related code
@@ -475,12 +480,12 @@ pub fn yylex M4_YY_LEX_PROTO !void {
 
 	            YY_END_OF_BUFFER => {
 		            // Amount of text matched not including the EOB char.
-		            var yy_amount_of_matched_text: c_int = (yy_cp - YY_G(yytext_ptr)) - 1;
+		            const yy_amount_of_matched_text: c_int = (yy_cp - YY_G(yytext_ptr)) - 1;
 
 		            // Undo the effects of YY_DO_BEFORE_ACTION.
 		            yy_cp.* = YY_G(yy_hold_char);
 
-		            if ( YY_CURRENT_BUFFER_LVALUE(this.yyg).yy_buffer_status == YY_BUFFER_NEW ) {
+		            if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_buffer_status == yy_buffer_state.YY_BUFFER_NEW ) {
                         // We're scanning a new file or input source.  It's
                         // possible that this happened because the user
                         // just pointed yyin at a new source and called
@@ -490,9 +495,9 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                         // this is the first action (other than possibly a
                         // back-up) that will match for the new input source.
                         //
-                        YY_G(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE.yy_n_chars;
-                        YY_CURRENT_BUFFER_LVALUE.yy_input_file = yyin;
-                        YY_CURRENT_BUFFER_LVALUE.yy_buffer_status =    YY_BUFFER_NORMAL;
+                        yyg.yy_n_chars = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_n_chars;
+                        yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_input_file = yyg.yyin;
+                        yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_buffer_status = yy_buffer_state.YY_BUFFER_NORMAL;
 		            }
 
                     // Note that here we test for yy_c_buf_p "<=" to the position
@@ -502,13 +507,13 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                     // end-of-buffer state).  Contrast this with the test
                     // in input().
                     //
-		            if ( YY_G(yy_c_buf_p) <= &YY_CURRENT_BUFFER_LVALUE.yy_ch_buf[YY_G(yy_n_chars)] ) {
+		            if (yyg.yy_c_buf_p <= &yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_ch_buf[yyg.yy_n_chars] ) {
                         // /* This was really a NUL. */
                         var yy_next_state: c_int = undefined;
 
                         YY_G(yy_c_buf_p) = YY_G(yytext_ptr) + yy_amount_of_matched_text;
 
-                        yy_current_state = yy_get_previous_state( M4_YY_CALL_ONLY_ARG );
+                        yy_current_state = yy_get_previous_state(yyg);
 
                         // Okay, we're now positioned to make the NUL
                         // transition.  We couldn't have
@@ -519,9 +524,9 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                         // will run more slowly).
                         //
 
-                        yy_next_state = yy_try_NUL_trans( yy_current_state M4_YY_CALL_LAST_ARG);
+                        yy_next_state = yy_try_NUL_trans( yy_current_state, yyg);
 
-                        yy_bp = YY_G(yytext_ptr) + YY_MORE_ADJ;
+                        yy_bp = YY_G(yytext_ptr) + yyg.yy_more_len;
 
                         if ( yy_next_state ) {
                             // /* Consume the NUL. */
@@ -530,17 +535,19 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                             yy_current_state = yy_next_state;
 
                             // break :yy_match;
-                            loop_control = LOOP_SATRT_YY_MATCH;
+                            loop_control = LOOP_START_YY_MATCH;
                             continue;
                         } else {
 %% [14.0] code to do back-up for compressed tables and set up yy_cp goes here
-            				break :yy_find_action;
+            				// break :yy_find_action;
+                            loop_control = LOOP_START_YY_FIND_ACTION;
+                            continue;
 	            		}
-		            } else switch ( yy_get_next_buffer( M4_YY_CALL_ONLY_ARG ) ) {
+		            } else switch (yy_get_next_buffer(yyg)) {
                         EOB_ACT_END_OF_FILE => {
                             YY_G(yy_did_buffer_switch_on_eof) = 0;
 
-                            if ( yywrap( M4_YY_CALL_ONLY_ARG ) ) {
+                            if (yywrap(yyg) != 0) {
                                 // Note: because we've taken care in
                                 // yy_get_next_buffer() to have set up
                                 // yytext, we can now set up
@@ -550,10 +557,12 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                                 // YY_NULL, it'll still work - another
                                 // YY_NULL will get returned.
                                 //
-                                YY_G(yy_c_buf_p) = YY_G(yytext_ptr) + YY_MORE_ADJ;
+                                YY_G(yy_c_buf_p) = YY_G(yytext_ptr) + yyg.yy_more_len;
 
                                 yy_act = YY_STATE_EOF(YY_START);
-                                break :do_action;
+                                // break :do_action;
+                                loop_control = LOOP_START_YY_ACT;
+                                continue;
                             } else {
                                 if ( ! YY_G(yy_did_buffer_switch_on_eof) )
                                     YY_NEW_FILE;
@@ -564,10 +573,10 @@ pub fn yylex M4_YY_LEX_PROTO !void {
                             YY_G(yy_c_buf_p) =
                                 YY_G(yytext_ptr) + yy_amount_of_matched_text;
 
-                            yy_current_state = yy_get_previous_state( M4_YY_CALL_ONLY_ARG );
+                            yy_current_state = yy_get_previous_state(yyg);
 
                             yy_cp = YY_G(yy_c_buf_p);
-                            yy_bp = YY_G(yytext_ptr) + YY_MORE_ADJ;
+                            yy_bp = YY_G(yytext_ptr) + yyg.yy_more_len;
 
                             // break :yy_match;
                             loop_control = LOOP_START_YY_MATCH;
@@ -576,14 +585,14 @@ pub fn yylex M4_YY_LEX_PROTO !void {
 
                         EOB_ACT_LAST_MATCH => {
                             YY_G(yy_c_buf_p) =
-                            &YY_CURRENT_BUFFER_LVALUE.yy_ch_buf[YY_G(yy_n_chars)];
+                            &yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_ch_buf[YY_G(yy_n_chars)];
 
-                            yy_current_state = yy_get_previous_state( M4_YY_CALL_ONLY_ARG );
+                            yy_current_state = yy_get_previous_state(yyg);
 
                             yy_cp = YY_G(yy_c_buf_p);
-                            yy_bp = YY_G(yytext_ptr) + YY_MORE_ADJ;
+                            yy_bp = YY_G(yytext_ptr) + yyg.yy_more_len;
 
-                            loop_control = LOOP_START_FIND_ACTION;
+                            loop_control = LOOP_START_YY_FIND_ACTION;
                             continue;
                             // break :yy_find_action;
                         },
@@ -600,118 +609,115 @@ pub fn yylex M4_YY_LEX_PROTO !void {
     } // core loop
 } // end of yylex
 
-// /* yy_get_next_buffer - try to read in a new buffer
-//  *
-//  * Returns a code representing an action:
-//  *	EOB_ACT_LAST_MATCH -
-//  *	EOB_ACT_CONTINUE_SCAN - continue scanning from current position
-//  *	EOB_ACT_END_OF_FILE - end of file
-//  */
-pub fn yy_get_next_buffer(yyg: *yyguts_t) c_int {
-	var dest = YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf;
-	var source = YY_G(yytext_ptr);
-	var number_to_move: c_int;
-    var i: c_int;
-	var ret_val: c_int;
+///  yy_get_next_buffer - try to read in a new buffer
+///
+///  Returns a code representing an action:
+/// 	EOB_ACT_LAST_MATCH -
+/// 	EOB_ACT_CONTINUE_SCAN - continue scanning from current position
+/// 	EOB_ACT_END_OF_FILE - end of file
+///
+pub fn yy_get_next_buffer(yyg: *yyguts_t) usize {
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	var dest = yy_current_buffer.yy_ch_buf;
+	var source = yyg.yytext_r;
+	var number_to_move: c_int = undefined;
+	var ret_val: usize = undefined;
 
-	if ( YY_G(yy_c_buf_p) > &YY_CURRENT_BUFFER_LVALUE.yy_ch_buf[YY_G(yy_n_chars) + 1] ) {
+	if (yyg.yy_c_buf_p > yy_current_buffer.yy_ch_buf[yyg.yy_n_chars + 1]) {
 		yy_fatal_error("fatal flex scanner internal error--end of buffer missed");
     }
 
-	if ( YY_CURRENT_BUFFER_LVALUE.yy_fill_buffer == 0 ) { // /* Don't try to fill the buffer, so this is an EOF. */
-		if ( YY_G(yy_c_buf_p) - YY_G(yytext_ptr) - YY_MORE_ADJ == 1 ) {
-			// /* We matched a single character, the EOB, so
-			//  * treat this as a final EOF.
-			//  */
+	if (yy_current_buffer.yy_fill_buffer == 0) {
+        // Don't try to fill the buffer, so this is an EOF.
+		if ((yyg.yy_c_buf_p - yyg.yytext_r) - yyg.yy_more_len == 1 ) {
+			// We matched a single character, the EOB, so
+			// treat this as a final EOF.
+			//
 			return EOB_ACT_END_OF_FILE;
 		} else {
-			// /* We matched some text prior to the EOB, first
-			//  * process it.
-			//  */
+			// We matched some text prior to the EOB, first
+			// process it.
+			//
 			return EOB_ACT_LAST_MATCH;
 		}
 	}
 
-	// /* Try to read more data. */
+	// Try to read more data.
 
-	// /* First move last chars to start of buffer. */
-	number_to_move = (YY_G(yy_c_buf_p) - YY_G(yytext_ptr) - 1);
+	// First move last chars to start of buffer.
+	number_to_move = (yyg.yy_c_buf_p - yyg.yytext_r) - 1;
 
     for (0..number_to_move) |_| {
+        // TODO: right?
+        dest.* = source.*;
         dest += 1;
         source += 1;
-        dest.* = source.*;
     }
 
-	if ( YY_CURRENT_BUFFER_LVALUE.yy_buffer_status == YY_BUFFER_EOF_PENDING ) {
-		// /* don't do the read, it's not guaranteed to return an EOF,
-		//  * just force an EOF
-		//  */
-        YY_G(yy_n_chars) = 0;
-		YY_CURRENT_BUFFER_LVALUE.yy_n_chars = 0;
+	if (yy_current_buffer.yy_buffer_status == yy_buffer_state.YY_BUFFER_EOF_PENDING) {
+		// don't do the read, it's not guaranteed to return an EOF,
+		// just force an EOF
+		//
+        yyg.yy_n_chars = 0;
+		yy_current_buffer.yy_n_chars = 0;
     } else {
-		var num_to_read: c_int =
-			YY_CURRENT_BUFFER_LVALUE.yy_buf_size - number_to_move - 1;
+		var num_to_read: usize = yy_current_buffer.yy_buf_size - number_to_move - 1;
 
-		while ( num_to_read <= 0 ) {
+		if ( num_to_read <= 0 ) {
             // /* Not enough room in the buffer - grow it. */
-m4_ifdef( [[M4_YY_USES_REJECT]],
-[[
+            m4_ifdef( [[M4_YY_USES_REJECT]],
+            [[
             yy_fatal_error("input buffer overflow, can't enlarge buffer because scanner uses REJECT");
-]],
-[[
-]])
+            ]],
+            [[
+            ]])
 		}
 
-		if ( num_to_read > YY_READ_BUF_SIZE )
-			num_to_read = YY_READ_BUF_SIZE;
+		if (num_to_read > YY_READ_BUF_SIZE) num_to_read = YY_READ_BUF_SIZE;
 
-		// /* Read in more data. */
-		YY_INPUT( (&YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf[number_to_move]), YY_G(yy_n_chars), num_to_read );
+		// Read in more data.
+		YY_INPUT(yy_current_buffer.yy_ch_buf[number_to_move], &yyg.yy_n_chars, num_to_read, yyg);
 
-		YY_CURRENT_BUFFER_LVALUE(yyg).yy_n_chars = YY_G(yy_n_chars);
+		yy_current_buffer.yy_n_chars = yyg.yy_n_chars;
 	}
 
-	if ( YY_G(yy_n_chars) == 0 ) {
-		if ( number_to_move == YY_MORE_ADJ ) {
+	if (yyg.yy_n_chars == 0) {
+		if (number_to_move == yyg.yy_more_len) {
 			ret_val = EOB_ACT_END_OF_FILE;
-			yyrestart( yyin  M4_YY_CALL_LAST_ARG);
+			yyrestart(yyg.yyin, yyg);
 		} else {
 			ret_val = EOB_ACT_LAST_MATCH;
-			YY_CURRENT_BUFFER_LVALUE(yyg).yy_buffer_status =
-				YY_BUFFER_EOF_PENDING;
+			yy_current_buffer.yy_buffer_status = yy_buffer_state.YY_BUFFER_EOF_PENDING;
 		}
 	} else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
-	if ((YY_G(yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE(yyg).yy_buf_size) {
-		// /* Extend the array by 50%, plus the number we really need. */
-		const new_size: usize = YY_G(yy_n_chars) + number_to_move + (YY_G(yy_n_chars) >> 1);
-		YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf = try yyg.allocator.realloc(u8, YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf, new_size);
-		// /* "- 2" to take care of EOB's */
-		YY_CURRENT_BUFFER_LVALUE(yyg).yy_buf_size = (new_size - 2);
+	if ((yyg.yy_n_chars + number_to_move) > yy_current_buffer.yy_buf_size) {
+		// Extend the array by 50%, plus the number we really need.
+		const new_size: usize = yyg.yy_n_chars + number_to_move + (yyg.yy_n_chars >> 1);
+		yy_current_buffer.yy_ch_buf = try yyg.allocator.realloc(u8, yy_current_buffer.yy_ch_buf, new_size);
+		// - 2 to take care of EOB's
+		yy_current_buffer.yy_buf_size = new_size - 2;
 	}
 
-	YY_G(yy_n_chars) += number_to_move;
-	YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf[YY_G(yy_n_chars)] = YY_END_OF_BUFFER_CHAR;
-	YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf[YY_G(yy_n_chars) + 1] = YY_END_OF_BUFFER_CHAR;
+	yyg.yy_n_chars += number_to_move;
+	yy_current_buffer.yy_ch_buf[yyg.yy_n_chars] = YY_END_OF_BUFFER_CHAR;
+	yy_current_buffer.yy_ch_buf[yyg.yy_n_chars + 1] = YY_END_OF_BUFFER_CHAR;
 
-	YY_G(yytext_ptr) = &YY_CURRENT_BUFFER_LVALUE(yyg).yy_ch_buf[0];
+	yyg.yytext_r = &(yy_current_buffer.yy_ch_buf[0]);
 
 	return ret_val;
 }
 
-// /* yy_get_previous_state - get the state just before the EOB char was reached */
-
+/// yy_get_previous_state - get the state just before the EOB char was reached */
 pub fn yy_get_previous_state (yyg: *yyguts_t) c_int {
-%endif
-	var yy_current_state: c_int;
-	var yy_cp: [*c]u8;
+	var yy_current_state: usize = 0;
+	var yy_cp: [*c]u8 = 0;
 
 %% [15.0] code to get the start state into yy_current_state goes here
 
-    yy_cp = YY_G(yytext_ptr) + YY_MORE_ADJ;
-	while ( yy_cp < YY_G(yy_c_buf_p)) : ( yy_cp = yy_cp + 1 ) {
+    yy_cp = yyg.yytext_r + yyg.yy_more_len;
+	while ( yy_cp < yyg.yy_c_buf_p) : ( yy_cp = yy_cp + 1 ) {
 %% [16.0] code to find the next state goes here
 	}
 
@@ -719,13 +725,13 @@ pub fn yy_get_previous_state (yyg: *yyguts_t) c_int {
 }
 
 
-// /* yy_try_NUL_trans - try to make a transition on the NUL character
-//  *
-//  * synopsis
-//  *	next_state = yy_try_NUL_trans( current_state );
-//  */
-pub fn yy_try_NUL_trans(yy_current_state: c_int, yyg: *yyguts_t) c_int {
-	var yy_is_jam: bool;
+/// yy_try_NUL_trans - try to make a transition on the NUL character
+///
+/// synopsis
+///	next_state = yy_try_NUL_trans( current_state );
+///
+pub fn yy_try_NUL_trans(yy_current_state: usize, yyg: *yyguts_t) usize {
+	var yy_is_jam: bool = undefined;
 %% [17.0] code to find the next state, and perhaps do backing up, goes here
 
 	return if (yy_is_jam) 0 else yy_current_state;
@@ -734,20 +740,20 @@ pub fn yy_try_NUL_trans(yy_current_state: c_int, yyg: *yyguts_t) c_int {
 
 m4_ifdef( [[M4_YY_NO_UNPUT]],,
 [[
-pub fn yyunput(c: c_int, yy_bp: [*c]u8, yyg: *yyguts_t) void {
-%endif
-	var yy_cp: [*c]u8 = YY_G(yy_c_buf_p);
+pub fn yyunput(c: u8, yy_bp: [*c]u8, yyg: *yyguts_t) void {
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	var yy_cp: [*c]u8 = yyg.yy_c_buf_p;
 
-	// /* undo effects of setting up yytext */
-	yy_cp.* = YY_G(yy_hold_char);
+	// undo effects of setting up yytext
+	yy_cp.* = yyg.yy_hold_char;
 
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 ) { // /* need to shift things up to make room */
-		// /* +2 for EOB chars. */
-		const number_to_move: usize = YY_G(yy_n_chars) + 2;
-		var dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		var source = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
+	if ( yy_cp < yy_current_buffer.yy_ch_buf + 2 ) { // need to shift things up to make room
+		// +2 for EOB chars.
+		const number_to_move: usize = yyg.yy_n_chars + 2;
+		var dest = &yy_current_buffer.yy_ch_buf[yy_current_buffer.yy_buf_size + 2];
+		var source = &yy_current_buffer.yy_ch_buf[number_to_move];
 
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf ) {
+		while (source > yy_current_buffer.yy_ch_buf) {
             dest -= 1;
             source -= 1;
             dest.* = source.*;
@@ -755,9 +761,10 @@ pub fn yyunput(c: c_int, yy_bp: [*c]u8, yyg: *yyguts_t) void {
 
 		yy_cp += (dest - source);
 		yy_bp += (dest - source);
-		YY_CURRENT_BUFFER_LVALUE.yy_n_chars = YY_G(yy_n_chars) = (int) YY_CURRENT_BUFFER_LVALUE.yy_buf_size;
+		yy_current_buffer.yy_n_chars = yy_current_buffer.yy_buf_size;
+        yyg.yy_n_chars = yy_current_buffer.yy_buf_size;
 
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
+		if (yy_cp < yy_current_buffer.yy_ch_buf + 2)
 			yy_fatal_error( "flex scanner push-back overflow");
 	}
 
@@ -765,169 +772,170 @@ pub fn yyunput(c: c_int, yy_bp: [*c]u8, yyg: *yyguts_t) void {
     yy_cp.* = c;
 
 %% [18.0] update yylineno here
-m4_ifdef( [[M4_YY_USE_LINENO]],
-[[
-    if ( c == '\n' ){
-        yylineno -= 1;
+    m4_ifdef( [[M4_YY_USE_LINENO]],
+    [[
+    if (c == '\n'){
+        yyg.yylineno -= 1;
     }
-]])
+    ]])
 
-	YY_G(yytext_ptr) = yy_bp;
-	YY_G(yy_hold_char) = yy_cp.*;
-	YY_G(yy_c_buf_p) = yy_cp;
+	yyg.yytext_r = yy_bp;
+	yyg.yy_hold_char = yy_cp.*;
+	yyg.yy_c_buf_p = yy_cp;
 }
-%if-c-only
 ]])
 
-pub fn input(yyg: *yyguts_t) c_int {
-	var c: c_int;
+pub fn input(yyg: *yyguts_t) u8 {
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	var c: u8 = undefined;
 
-	YY_G(yy_c_buf_p).* = YY_G(yy_hold_char);
+	yyg.yy_c_buf_p.* = yyg.yy_hold_char;
 
-	if ( YY_G(yy_c_buf_p).* == YY_END_OF_BUFFER_CHAR ) {
-		// /* yy_c_buf_p now points to the character we want to return.
-		//  * If this occurs *before* the EOB characters, then it's a
-		//  * valid NUL; if not, then we've hit the end of the buffer.
-		//  */
-		if ( YY_G(yy_c_buf_p) < &YY_CURRENT_BUFFER_LVALUE.yy_ch_buf[YY_G(yy_n_chars)] )
-			// /* This was really a NUL. */
-			YY_G(yy_c_buf_p).* = '\0';
-		else { // /* need more input */
-			const offset: c_int = (int) (YY_G(yy_c_buf_p) - YY_G(yytext_ptr));
-			YY_G(yy_c_buf_p) += 1;
+	if (yyg.yy_c_buf_p.* == YY_END_OF_BUFFER_CHAR) {
+		// yy_c_buf_p now points to the character we want to return.
+		// If this occurs *before* the EOB characters, then it's a
+		// valid NUL; if not, then we've hit the end of the buffer.
+		//
+		if (yyg.yy_c_buf_p < &yy_current_buffer.yy_ch_buf[yyg.yy_n_chars]) {
+			// This was really a NUL.
+			yyg.yy_c_buf_p.* = 0;
+		} else {
+            // need more input
+			const offset: usize = yyg.yy_c_buf_p - yyg.yytext_r;
+			yyg.yy_c_buf_p += 1;
 
-            const nb = yy_get_next_buffer( yyscanner );
-			switch ( nb ) {
+            const nb = yy_get_next_buffer(yyg);
+			switch (nb) {
 				EOB_ACT_LAST_MATCH, EOB_ACT_END_OF_FILE => {
-					// /* This happens because yy_g_n_b()
-					//  * sees that we've accumulated a
-					//  * token and flags that we need to
-					//  * try matching the token before
-					//  * proceeding.  But for input(),
-					//  * there's no matching to consider.
-					//  * So convert the EOB_ACT_LAST_MATCH
-					//  * to EOB_ACT_END_OF_FILE.
-					//  */
+					// This happens because yy_g_n_b()
+					// sees that we've accumulated a
+					// token and flags that we need to
+					// try matching the token before
+					// proceeding.  But for input(),
+					// there's no matching to consider.
+					// So convert the EOB_ACT_LAST_MATCH
+					// to EOB_ACT_END_OF_FILE.
+					//
 
                     if (nb == EOB_ACT_LAST_MATCH) {
-					    // /* Reset buffer status. */
-					    yyrestart( yyin M4_YY_CALL_LAST_ARG);
+					    // Reset buffer status.
+					    yyrestart(yyg.yyin, yyg);
                     }
 
-					if ( yywrap( M4_YY_CALL_ONLY_ARG ) )
+					if (yywrap(yyg) != 0)
 						return 0;
 
-					if ( ! YY_G(yy_did_buffer_switch_on_eof) )
-				        YY_NEW_FILE();
-					return input(M4_YY_CALL_ONLY_ARG);
+					if (!yyg.yy_did_buffer_switch_on_eof)
+				        YY_NEW_FILE(yyg);
+					return input(yyg);
 				},
 
 				EOB_ACT_CONTINUE_SCAN => {
-					YY_G(yy_c_buf_p) = YY_G(yytext_ptr) + offset;
+					yyg.yy_c_buf_p = yyg.yytext_r + offset;
 				},
+
+                else => {},
 			}
 		}
     }
 
-	c = YY_G(yy_c_buf_p).*; // /* cast for 8-bit char's */
-	YY_G(yy_c_buf_p).* = '\0'; // /* preserve yytext */
-    YY_G(yy_c_buf_p) += 1;
-	YY_G(yy_hold_char) = YY_G(yy_c_buf_p).*;
+	c = yyg.yy_c_buf_p.*; // cast for 8-bit char's
+	yyg.yy_c_buf_p.* = 0; // preserve yytext
+    yyg.yy_c_buf_p += 1;
+	yyg.yy_hold_char = yyg.yy_c_buf_p.*;
 
 %% [19.0] update BOL and yylineno
 
 	return c;
 }
 
-// /** Immediately switch to a different input stream.
-//  * @param input_file A readable stream.
-//  * M4_YY_DOC_PARAM
-//  * @note This function does not reset the start condition to @c INITIAL .
-//  */
-pub fn yyrestart(input_file: std.fs.File, yyg: *yyguts_t) void {
-	if (YY_CURRENT_BUFFER(yyg) == null) {
+/// Immediately switch to a different input stream.
+/// @param input_file A readable stream.
+/// @note This function does not reset the start condition to @c INITIAL .
+///
+pub fn yyrestart(input_file: std.fs.File, yyg: *yyguts_t) !void {
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	if (yy_current_buffer == 0) {
         yyensure_buffer_stack(yyg);
-		YY_CURRENT_BUFFER_LVALUE(yyg).* = yy_create_buffer( yyin, YY_BUF_SIZE, yyg);
+		yy_current_buffer.* = try yy_create_buffer(yyg.yyin, YY_BUF_SIZE, yyg);
 	}
-	yy_init_buffer( YY_CURRENT_BUFFER, input_file, yyg);
+	yy_init_buffer(yy_current_buffer, input_file, yyg);
 	yy_load_buffer_state(yyg);
 }
 
-// /** Switch to a different input buffer.
-//  * @param new_buffer The new input buffer.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Switch to a different input buffer.
+///  @param new_buffer The new input buffer.
+///
 pub fn yy_switch_to_buffer(new_buffer: *yy_buffer_state, yyg: *yyguts_t) void {
     yypop_buffer_state(yyg);
     yypush_buffer_state(new_buffer);
 }
 
-
 pub fn yy_load_buffer_state(yyg: *yyguts_t) void {
-	YY_G(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE(yyg).yy_n_chars;
-	YY_G(yytext_r) = YY_CURRENT_BUFFER_LVALUE(yyg).yy_buf_pos;
-    YY_G(yy_c_buf_p) = YY_CURRENT_BUFFER_LVALUE(yyg).yy_buf_pos;
-	yyg.yyin_r = YY_CURRENT_BUFFER_LVALUE.yy_input_file;
-	YY_G(yy_hold_char) = *YY_G(yy_c_buf_p);
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	yyg.yy_n_chars = yy_current_buffer.yy_n_chars;
+	yyg.yytext_r = yy_current_buffer.yy_buf_pos;
+    yyg.yy_c_buf_p = yy_current_buffer.yy_buf_pos;
+	yyg.yyin_r = yy_current_buffer.yy_input_file;
+	yyg.yy_hold_char = yyg.yy_c_buf_p.*;
 }
 
-// /** Allocate and initialize an input buffer state.
-//  * @param file A readable stream.
-//  * @param size The character buffer size in bytes. When in doubt, use @c YY_BUF_SIZE.
-//  * M4_YY_DOC_PARAM
-//  * @return the allocated buffer state.
-//  */
+/// Allocate and initialize an input buffer state.
+/// @param file A readable stream.
+/// @param size The character buffer size in bytes. When in doubt, use @c YY_BUF_SIZE.
+/// @return the allocated buffer state.
+///
 pub fn yy_create_buffer(file: std.fs.File, size: usize, yyg: *yyguts_t) !*yy_buffer_state {
     const self = @fieldParentPtr(Self, "yyg", yyg);
 	var b: *yy_buffer_state = try self.allocator.create(yy_buffer_state);
     b.yy_buf_size = size;
 
-	// /* yy_ch_buf has to be 2 characters longer than the size given because
-	//  * we need to put in 2 end-of-buffer characters.
-	//  */
-    b.yy_ch_buf = try self.allocator.alloc(u8, b->yy_buf_size + 2);
+	// yy_ch_buf has to be 2 characters longer than the size given because
+	// we need to put in 2 end-of-buffer characters.
+	//
+    b.yy_ch_buf = try self.allocator.alloc(u8, b.yy_buf_size + 2);
 	b.yy_is_our_buffer = true;
 	yy_init_buffer( b, file, yyg);
 
 	return b;
 }
 
-// /** Destroy the buffer.
-//  * @param b a buffer created with yy_create_buffer()
-//  * M4_YY_DOC_PARAM
-//  */
+/// Destroy the buffer.
+/// @param b a buffer created with yy_create_buffer()
+///
 pub fn yy_delete_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
     const self = @fieldParentPtr(Self, "yyg", yyg);
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 
 	// if ( ! b )
 	//	return;
 
-	if ( b == YY_CURRENT_BUFFER(yyg) ) // /* Not sure if we should pop here. */
-		YY_CURRENT_BUFFER_LVALUE(yyg) = 0;
+	if (b == yy_current_buffer) // Not sure if we should pop here.
+		yy_current_buffer = 0;
 
-	if ( b.yy_is_our_buffer ) {
+	if (b.yy_is_our_buffer) {
         self.allocator.free(b.yy_ch_buf);
     }
 
     self.allocator.free(b);
 }
 
-
-// /* Initializes or reinitializes a buffer.
-//  * This function is sometimes called more than once on the same buffer,
-//  * such as during a yyrestart() or at EOF.
-//  */
+/// Initializes or reinitializes a buffer.
+/// This function is sometimes called more than once on the same buffer,
+/// such as during a yyrestart() or at EOF.
+///
 pub fn yy_init_buffer(b: *yy_buffer_state, file: std.fs.File, yyg: *yyguts_t) void {
 	yy_flush_buffer(b, yyg);
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 
 	b.yy_input_file = file;
 	b.yy_fill_buffer = 1;
 
-    // /* If b is the current buffer, then yy_init_buffer was _probably_
-    //  * called from yyrestart() or through yy_get_next_buffer.
-    //  * In that case, we don't want to reset the lineno or column.
-    //  */
-    if (b != YY_CURRENT_BUFFER(yyg)){
+    // If b is the current buffer, then yy_init_buffer was _probably_
+    // called from yyrestart() or through yy_get_next_buffer.
+    // In that case, we don't want to reset the lineno or column.
+    //
+    if (b != yy_current_buffer) {
         b.yy_bs_lineno = 1;
         b.yy_bs_column = 0;
     }
@@ -947,11 +955,11 @@ pub fn yy_init_buffer(b: *yy_buffer_state, file: std.fs.File, yyg: *yyguts_t) vo
     ]])
 }
 
-// /** Discard all buffered characters. On the next scan, YY_INPUT will be called.
-//  * @param b the buffer state to be flushed, usually @c YY_CURRENT_BUFFER.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Discard all buffered characters. On the next scan, YY_INPUT will be called.
+/// @param b the buffer state to be flushed, usually @c YY_CURRENT_BUFFER.
+///
 pub fn yy_flush_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	// if ( ! b )
 	// 	return;
 
@@ -967,127 +975,126 @@ pub fn yy_flush_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
 	b.yy_buf_pos = &b.yy_ch_buf[0];
 
 	b.yy_at_bol = true;
-	b.yy_buffer_status = YY_BUFFER_NEW;
+	b.yy_buffer_status = yy_buffer_state.YY_BUFFER_NEW;
 
-	if ( b == YY_CURRENT_BUFFER(yyg) )
-		yy_load_buffer_state(yyg);
+	if (b == yy_current_buffer) yy_load_buffer_state(yyg);
 }
 
-// /** Pushes the new state onto the stack. The new state becomes
-//  *  the current state. This function will allocate the stack
-//  *  if necessary.
-//  *  @param new_buffer The new state.
-//  *  M4_YY_DOC_PARAM
-//  */
+/// Pushes the new state onto the stack. The new state becomes
+/// the current state. This function will allocate the stack
+/// if necessary.
+/// @param new_buffer The new state.
+///
 pub fn yypush_buffer_state(new_buffer: *yy_buffer_state, yyg: *yyguts_t) void {
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+
 	// if (new_buffer == NULL)
 	//	return;
 
 	yyensure_buffer_stack(yyg);
 
-	// /* This block is copied from yy_switch_to_buffer. */
-	if ( YY_CURRENT_BUFFER(yyg) ) {
-		// /* Flush out information for old buffer. */
-		YY_G(yy_c_buf_p).* = YY_G(yy_hold_char);
-		YY_CURRENT_BUFFER_LVALUE.yy_buf_pos = YY_G(yy_c_buf_p);
-		YY_CURRENT_BUFFER_LVALUE.yy_n_chars = YY_G(yy_n_chars);
+	// This block is copied from yy_switch_to_buffer.
+	if (yy_current_buffer != 0) {
+		// Flush out information for old buffer.
+		yyg.yy_c_buf_p.* = yyg.yy_hold_char;
+		yy_current_buffer.yy_buf_pos = yyg.yy_c_buf_p;
+		yy_current_buffer.yy_n_chars = yyg.yy_n_chars;
 	}
 
-	// /* Only push if top exists. Otherwise, replace top. */
-	if (YY_CURRENT_BUFFER)
-		YY_G(yy_buffer_stack_top) += 1;
-	YY_CURRENT_BUFFER_LVALUE = new_buffer;
+	// Only push if top exists. Otherwise, replace top.
+	if (yy_current_buffer != 0)
+		yyg.yy_buffer_stack_top += 1;
+	yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = new_buffer;
 
-	// /* copied from yy_switch_to_buffer. */
-	yy_load_buffer_state( M4_YY_CALL_ONLY_ARG );
-	YY_G(yy_did_buffer_switch_on_eof) = true;
+	// copied from yy_switch_to_buffer.
+	yy_load_buffer_state(yyg);
+	yyg.yy_did_buffer_switch_on_eof = true;
 }
 
-// /** Removes and deletes the top of the stack, if present.
-//  *  The next element becomes the new top.
-//  *  M4_YY_DOC_PARAM
-//  */
+/// Removes and deletes the top of the stack, if present.
+/// The next element becomes the new top.
+///
 pub fn yypop_buffer_state(yyg: *yyguts_t) void {
-	if (YY_CURRENT_BUFFER(yyg) == null)
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+	if (yy_current_buffer == 0)
 		return;
 
-	yy_delete_buffer(YY_CURRENT_BUFFER(yyg), yyg);
-	YY_CURRENT_BUFFER_LVALUE(yyg).* = null;
-	if (YY_G(yy_buffer_stack_top) > 0)
-		YY_G(yy_buffer_stack_top) -= 1;
+	yy_delete_buffer(yy_current_buffer, yyg);
+	yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = 0;
+	if (yyg.yy_buffer_stack_top > 0)
+		yyg.yy_buffer_stack_top -= 1;
 
-	if (YY_CURRENT_BUFFER(yyg)) {
-		yy_load_buffer_state( M4_YY_CALL_ONLY_ARG );
-		YY_G(yy_did_buffer_switch_on_eof) = true;
+	if (yy_current_buffer) {
+		yy_load_buffer_state(yyg);
+		yyg.yy_did_buffer_switch_on_eof = true;
 	}
 }
 
-// /* Allocates the stack if it does not exist.
-//  *  Guarantees space for at least one push.
-//  */
+/// Allocates the stack if it does not exist.
+/// Guarantees space for at least one push.
+///
 pub fn yyensure_buffer_stack(yyg: *yyguts_t) !void {
     const self = @fieldParentPtr(Self, "yyg", yyg);
-	var num_to_alloc: usize;
+	var num_to_alloc: usize = undefined;
 
 	if (YY_G(yy_buffer_stack) == null) {
+		// First allocation is just for 2 elements, since we don't know if this
+		// scanner will even need a stack. We use 2 instead of 1 to avoid an
+		// immediate realloc on the next call.
+        //
+        num_to_alloc = 1; // After all that talk, this was set to 1 anyways...
+        yyg.yy_buffer_stack = try self.allocator.alloc(*yy_buffer_state, num_to_alloc);
+        @memset(yyg.yy_buffer_stack, 0);
 
-		// /* First allocation is just for 2 elements, since we don't know if this
-		//  * scanner will even need a stack. We use 2 instead of 1 to avoid an
-		//  * immediate realloc on the next call.
-        //  */
-        num_to_alloc = 1; // /* After all that talk, this was set to 1 anyways... */
-        YY_G(yy_buffer_stack) = try self.allocator.alloc(*yy_buffer_state, num_to_alloc);
-        @memset(YY_G(yy_buffer_stack), 0);
-
-		YY_G(yy_buffer_stack_max) = num_to_alloc;
-		YY_G(yy_buffer_stack_top) = 0;
+		yyg.yy_buffer_stack_max = num_to_alloc;
+		yyg.yy_buffer_stack_top = 0;
 		return;
 	}
 
-	if (YY_G(yy_buffer_stack_top) >= (YY_G(yy_buffer_stack_max)) - 1) {
+	if (yyg.yy_buffer_stack_top >= (yyg.yy_buffer_stack_max - 1)) {
+		// Increase the buffer to prepare for a possible push.
+		const grow_size = 8; // arbitrary grow size
 
-		// /* Increase the buffer to prepare for a possible push. */
-		const grow_size = 8; // /* arbitrary grow size */
+		num_to_alloc = yyg.yy_buffer_stack_max + grow_size;
+        yyg.yy_buffer_stack = try self.allocator.alloc(*yy_buffer_state, num_to_alloc);
 
-		num_to_alloc = YY_G(yy_buffer_stack_max) + grow_size;
-        YY_G(yy_buffer_stack) = try self.allocator.alloc(*yy_buffer_state, num_to_alloc);
-        @memset(YY_G(yy_buffer_stack)[YY_G(yy_buffer_stack_max)..], 0);
-
-		// /* zero only the new slots.*/
+		// zero only the new slots.
+        @memset(yyg.yy_buffer_stack[yyg.yy_buffer_stack_max..], 0);
 		// memset(YY_G(yy_buffer_stack) + YY_G(yy_buffer_stack_max), 0, grow_size * sizeof(struct yy_buffer_state*));
-		YY_G(yy_buffer_stack_max) = num_to_alloc;
+		yyg.yy_buffer_stack_max = num_to_alloc;
 	}
 }
 
 m4_ifdef( [[M4_YY_NO_SCAN_BUFFER]],,
 [[
-// /** Setup the input buffer state to scan directly from a user-specified character buffer.
-//  * @param base the character buffer
-//  * @param size the size in bytes of the character buffer
-//  * M4_YY_DOC_PARAM
-//  * @return the newly allocated buffer state object.
-//  */
+/// Setup the input buffer state to scan directly from a user-specified character buffer.
+/// @param base the character buffer
+/// @param size the size in bytes of the character buffer
+/// @return the newly allocated buffer state object.
+///
 pub fn yy_scan_buffer(base: []const u8, yyg: *yyguts_t) !?*yy_buffer_state {
     const self = @fieldParentPtr(Self, "yyg", yyg);
-	var b: *yy_buffer_state;
+	var b: *yy_buffer_state = undefined;
 
-	if ( base.len < 2 ||
-	     base[base.len-2] != YY_END_OF_BUFFER_CHAR ||
-	     base[base.len-1] != YY_END_OF_BUFFER_CHAR )
-		// /* They forgot to leave room for the EOB's. */
-		return null;
+	if (base.len < 2 or
+	     base[base.len-2] != YY_END_OF_BUFFER_CHAR or
+	     base[base.len-1] != YY_END_OF_BUFFER_CHAR) {
+		// They forgot to leave room for the EOB's.
+		return error.BufferBaseNotEnoughRoom;
+    }
 
     b = try self.allocator.create(yy_buffer_state);
 
-	b.yy_buf_size = (int) (size - 2);	// /* "- 2" to take care of EOB's */
-	b.yy_buf_pos = b.yy_ch_buf = base;
+	b.yy_buf_size = base.len - 2;	// - 2 to take care of EOB's
+	b.yy_buf_pos = base;
+    b.yy_ch_buf = base;
 	b.yy_is_our_buffer = 0;
-	b.yy_input_file = NULL;
+	b.yy_input_file = std.io.getStdIn();
 	b.yy_n_chars = b.yy_buf_size;
 	b.yy_is_interactive = 0;
 	b.yy_at_bol = 1;
 	b.yy_fill_buffer = 0;
-	b.yy_buffer_status = YY_BUFFER_NEW;
+	b.yy_buffer_status = yy_buffer_state.YY_BUFFER_NEW;
 
 	yy_switch_to_buffer(b, yyg);
 
@@ -1098,34 +1105,33 @@ pub fn yy_scan_buffer(base: []const u8, yyg: *yyguts_t) !?*yy_buffer_state {
 
 m4_ifdef( [[M4_YY_NO_SCAN_STRING]],,
 [[
-// /** Setup the input buffer state to scan a string. The next call to yylex() will
-//  * scan from a @e copy of @a str.
-//  * @param yystr a NUL-terminated string to scan
-//  * M4_YY_DOC_PARAM
-//  * @return the newly allocated buffer state object.
-//  * @note If you want to scan bytes that may contain NUL values, then use
-//  *       yy_scan_bytes() instead.
-//  */
-// in zig just alias to yy_scan_bytes
+/// Setup the input buffer state to scan a string. The next call to yylex() will
+/// scan from a @e copy of @a str.
+/// @param yystr a NUL-terminated string to scan
+///
+/// @return the newly allocated buffer state object.
+/// @note If you want to scan bytes that may contain NUL values, then use
+///       yy_scan_bytes() instead.
+///
+/// in zig just alias to yy_scan_bytes
 pub const yy_scan_string = yy_scan_bytes;
 ]])
 
 
 m4_ifdef( [[M4_YY_NO_SCAN_BYTES]],,
 [[
-// /** Setup the input buffer state to scan the given bytes. The next call to yylex() will
-//  * scan from a @e copy of @a bytes.
-//  * @param yybytes the byte buffer to scan
-//  * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
-//  * M4_YY_DOC_PARAM
-//  * @return the newly allocated buffer state object.
-//  */
-pub fn yy_scan_bytes(yybytes: []const char, yyg: *yyguts_t) !*yy_buffer_state {
+/// Setup the input buffer state to scan the given bytes. The next call to yylex() will
+/// scan from a @e copy of @a bytes.
+/// @param yybytes the byte buffer to scan
+/// @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
+/// @return the newly allocated buffer state object.
+///
+pub fn yy_scan_bytes(yybytes: []const u8, yyg: *yyguts_t) !*yy_buffer_state {
     const self = @fieldParentPtr(Self, "yyg", yyg);
-	var b: *yy_buffer_state;
-	var n: usize = yybytes.len + 2;
+	var b: *yy_buffer_state = undefined;
+	const n: usize = yybytes.len + 2;
 
-	// /* Get memory for full buffer, including space for trailing EOB's. */
+	// Get memory for full buffer, including space for trailing EOB's.
     var buf = try self.allocator.alloc(u8, n);
     @memcpy(buf, yybytes);
 	buf[yybytes.len] = YY_END_OF_BUFFER_CHAR;
@@ -1133,33 +1139,32 @@ pub fn yy_scan_bytes(yybytes: []const char, yyg: *yyguts_t) !*yy_buffer_state {
 
 	b = try yy_scan_buffer(buf, yyg);
 
-	// /* It's okay to grow etc. this buffer, and we should throw it
-	// * away when we're done.
-	//  */
+	// It's okay to grow etc. this buffer, and we should throw it
+	// away when we're done.
+	//
 	b.yy_is_our_buffer = true;
 	return b;
 }
 ]])
 
-
 m4_ifdef( [[M4_YY_NO_PUSH_STATE]],,
 [[
-pub fn yy_push_state(new_state: c_int, yyg: *yyguts_t) !void {
+pub fn yy_push_state(new_state: usize, yyg: *yyguts_t) !void {
     const self = @fieldParentPtr(Self, "yyg", yyg);
-	if ( YY_G(yy_start_stack_ptr) >= YY_G(yy_start_stack_depth) ) {
-		var new_size: usize;
+	if (yyg.yy_start_stack_ptr >= yyg.yy_start_stack_depth) {
+		var new_size: usize = 0;
 
-		YY_G(yy_start_stack_depth) += YY_START_STACK_INCR;
-		new_size = YY_G(yy_start_stack_depth) * @sizeOf(c_int);
+		yyg.yy_start_stack_depth += YY_START_STACK_INCR;
+		new_size = yyg.yy_start_stack_depth * @sizeOf(usize);
 
-		if ( ! YY_G(yy_start_stack) ) {
-			YY_G(yy_start_stack) = try self.allocator.alloc(c_int, new_size);
+		if (yyg.yy_start_stack  == 0) {
+			yyg.yy_start_stack = try self.allocator.alloc(usize, new_size);
 		} else {
-			YY_G(yy_start_stack) = try self.allocator.realloc(c_int,YY_G(yy_start_stack), new_size);
+			yyg.yy_start_stack = try self.allocator.realloc(usize, yyg.yy_start_stack, new_size);
         }
 
-	    YY_G(yy_start_stack)[YY_G(yy_start_stack_ptr)] = YY_START;
-        YY_G(yy_start_stack_ptr) += 1;
+	    yyg.yy_start_stack[yyg.yy_start_stack_ptr] = YY_START(self);
+        yyg.yy_start_stack_ptr += 1;
 
 	    BEGIN(new_state, yyg);
     }
@@ -1170,45 +1175,44 @@ pub fn yy_push_state(new_state: c_int, yyg: *yyguts_t) !void {
 m4_ifdef( [[M4_YY_NO_POP_STATE]],,
 [[
 pub fn yy_pop_state(yyg: *yyguts_t) void {
-	if ( YY_G(yy_start_stack_ptr) <= 0 )
-		yy_fatal_error( "start-condition stack underflow");
-    YY_G(yy_start_stack_ptr) -= 1;
-	BEGIN(YY_G(yy_start_stack)[YY_G(yy_start_stack_ptr)], yyg);
+	if (yyg.yy_start_stack_ptr <= 0)
+		yy_fatal_error("start-condition stack underflow");
+    yyg.yy_start_stack_ptr -= 1;
+	BEGIN(yyg.yy_start_stack[yyg.yy_start_stack_ptr], yyg);
 }
 ]])
 
 
 m4_ifdef( [[M4_YY_NO_TOP_STATE]],,
 [[
-pub fn yy_top_state(yyg: *yyguts_t) c_int {
-	return YY_G(yy_start_stack)[YY_G(yy_start_stack_ptr) - 1];
+pub inline fn yy_top_state(yyg: *yyguts_t) usize {
+	return yyg.yy_start_stack[yyg.yy_start_stack_ptr - 1];
 }
 ]])
 
 pub fn yy_fatal_error(msg: []const u8) noreturn {
     std.debug.print("{s}\n", .{msg});
-    sys.os.exit(YY_EXIT_FAILURE);
+    std.os.exit(YY_EXIT_FAILURE);
 }
 
 // /* Redefine yyless() so it works in section 3 code. */
+// TODO: WTF is this?
 
 fn _yyless_2(n: usize, yyg: *yyguts_t) void {
-    // /* Undo effects of setting up yytext. */
+    // Undo effects of setting up yytext.
     YY_LESS_LINENO(n, yyg);
-    yyg.yytext_r[yyg.yyleng_r] = YY_G(yy_hold_char);
-    YY_G(yy_c_buf_p) = yyg.yytext_r + n;
-    YY_G(yy_hold_char) = YY_G(yy_c_buf_p).*;
-    YY_G(yy_c_buf_p).* = '\0';
+    yyg.yytext_r[yyg.yyleng_r] = yyg.yy_hold_char;
+    yyg.yy_c_buf_p = yyg.yytext_r + n;
+    yyg.yy_hold_char = yyg.yy_c_buf_p.*;
+    yyg.yy_c_buf_p.* = 0;
     yyg.yyleng = n;
 }
 
-// /* Accessor  methods (get/set functions) to struct members. */
+// Accessor  methods (get/set functions) to struct members.
 
 m4_ifdef( [[M4_YY_NO_GET_EXTRA]],,
 [[
-// /** Get the user-defined data for this scanner.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the user-defined data for this scanner.
 pub inline fn yyget_extra(yyg: *yyguts_t) YY_EXTRA_TYPE {
     return yyg.yyextra;
 }
@@ -1216,13 +1220,12 @@ pub inline fn yyget_extra(yyg: *yyguts_t) YY_EXTRA_TYPE {
 
 m4_ifdef( [[M4_YY_NO_GET_LINENO]],,
 [[
-// /** Get the current line number.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the current line number.
 pub inline fn yyget_lineno(yyg: *yyguts_t) usize {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
-        if (YY_CURRENT_BUFFER(yyg) == 0)
+        const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        if (yy_current_buffer == 0)
             return 0;
     ]])
     return yyg.yylineno;
@@ -1233,13 +1236,12 @@ m4_ifdef( [[M4_YY_REENTRANT]],
 [[
 m4_ifdef( [[M4_YY_NO_GET_COLUMN]],,
 [[
-// /** Get the current column number.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the current column number.
 pub fn yyget_column(yyg: *yyguts_t) usize {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
-        if (YY_CURRENT_BUFFER(yyg) == 0)
+        const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        if (yy_current_buffer == 0)
             return 0;
     ]])
     return yyg.yycolumn;
@@ -1249,9 +1251,7 @@ pub fn yyget_column(yyg: *yyguts_t) usize {
 
 m4_ifdef( [[M4_YY_NO_GET_IN]],,
 [[
-// /** Get the input stream.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the input stream.
 pub inline fn yyget_in(yyg: *yyguts_t) std.fs.File {
     return yyg.yyin;
 }
@@ -1259,9 +1259,7 @@ pub inline fn yyget_in(yyg: *yyguts_t) std.fs.File {
 
 m4_ifdef( [[M4_YY_NO_GET_OUT]],,
 [[
-// /** Get the output stream.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the output stream.
 pub inline fn yyget_out(yyg: *yyguts_t) std.fs.File {
     return yyg.yyout;
 }
@@ -1269,17 +1267,13 @@ pub inline fn yyget_out(yyg: *yyguts_t) std.fs.File {
 
 m4_ifdef( [[M4_YY_NO_GET_LENG]],,
 [[
-// /** Get the length of the current token.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the length of the current token.
 pub inline fn yyget_leng(yyg: *yyguts_t) usize {
     return yyg.yyleng_r;
 }
 ]])
 
-// /** Get the current token.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Get the current token.
 m4_ifdef( [[M4_YY_NO_GET_TEXT]],,
 [[
 pub inline fn yyget_text(yyg: *yyguts_t) []const u8 {
@@ -1289,10 +1283,9 @@ pub inline fn yyget_text(yyg: *yyguts_t) []const u8 {
 
 m4_ifdef( [[M4_YY_NO_SET_EXTRA]],,
 [[
-// /** Set the user-defined data. This data is never touched by the scanner.
-//  * @param user_defined The data to be associated with this scanner.
-//  * M4_YY_DOC_PARAM
-//  */
+/// Set the user-defined data. This data is never touched by the scanner.
+/// @param user_defined The data to be associated with this scanner.
+///
 pub inline fn yyset_extra(user_defined: YY_EXTRA_TYPE, yyg: *yyguts_t) YY_EXTRA_TYPE {
     yyg.yyextra = user_defined;
 }
@@ -1300,15 +1293,14 @@ pub inline fn yyset_extra(user_defined: YY_EXTRA_TYPE, yyg: *yyguts_t) YY_EXTRA_
 
 m4_ifdef( [[M4_YY_NO_SET_LINENO]],,
 [[
-// /** Set the current line number.
-//  * @param _line_number line number
-//  * M4_YY_DOC_PARAM
-//  */
+/// Set the current line number.
+/// @param _line_number line number
+///
 pub inline fn yyset_lineno(line_number: usize, yyg: *yyguts_t) void {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
-        // /* lineno is only valid if an input buffer exists. */
-        if (YY_CURRENT_BUFFER(yyg) == null)
+        const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        if (yy_current_buffer == 0)
            yy_fatal_error("yyset_lineno called with no buffer");
     ]])
     yyg.yylineno = line_number;
@@ -1319,15 +1311,15 @@ m4_ifdef( [[M4_YY_REENTRANT]],
 [[
 m4_ifdef( [[M4_YY_NO_SET_COLUMN]],,
 [[
-// /** Set the current column.
-//  * @param _column_no column number
-//  * M4_YY_DOC_PARAM
-//  */
+/// Set the current column.
+/// @param _column_no column number
+///
 pub inline fn yyset_column(column_no: usize, yyg: *yyguts_t) void {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
-        // /* column is only valid if an input buffer exists. */
-        if (YY_CURRENT_BUFFER(yyg) == null)
+        // column is only valid if an input buffer exists.
+        const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        if (yy_current_buffer == 0)
            yy_fatal_error( "yyset_column called with no buffer");
     ]])
     yyg.yycolumn = column_no;
@@ -1337,12 +1329,11 @@ pub inline fn yyset_column(column_no: usize, yyg: *yyguts_t) void {
 
 m4_ifdef( [[M4_YY_NO_SET_IN]],,
 [[
-// /** Set the input stream. This does not discard the current
-//  * input buffer.
-//  * @param _in_str A readable stream.
-//  * M4_YY_DOC_PARAM
-//  * @see yy_switch_to_buffer
-//  */
+/// Set the input stream. This does not discard the current
+/// input buffer.
+/// @param _in_str A readable stream.
+/// @see yy_switch_to_buffer
+///
 pub inline fn yyset_in(in_str: std.fs.File, yyg: *yyguts_t) void {
     yyg.yyin = in_str ;
 }
@@ -1369,7 +1360,7 @@ pub inline fn yyset_debug(bdebug: bool, yyg: *yyguts_t) void {
 }
 ]])
 
-// /* Accessor methods for yylval and yylloc */
+// Accessor methods for yylval and yylloc
 
 %if-bison-bridge
 m4_ifdef( [[M4_YY_NO_GET_LVAL]],,
@@ -1405,20 +1396,21 @@ pub inline fn yyset_lloc(yylloc_param: *YYLTYPE, yyg: *yyguts_t) void {
 %endif
 
 
-// /* User-visible API */
+// User-visible API
 // actually they are just as defined by traditional flex as user-visible
 // zig output will have most functions use visible
 // the difference here is below functions start to use `this: *Self` as the
 // first param, where yyg can be easily got by `this.yyg`, and `this.allocator`
 
-// /* yylex_init is special because it creates the scanner itself, so it is
-//  * the ONLY reentrant function that doesn't take the scanner as the last argument.
-//  * That's why we explicitly handle the declaration, instead of using our macros.
-//  */
+/// yylex_init is special because it creates the scanner itself, so it is
+/// the ONLY reentrant function that doesn't take the scanner as the last
+/// argument. That's why we explicitly handle the declaration, instead of
+/// using our macros.
+///
 pub fn yylex_init(allocator: std.mem.Allocator) !Self {
     var yyg = try allocator.create(yyscan_t);
 
-    // /* By setting to 0xAA, we expose bugs in yy_init_globals. Leave at 0x00 for releases. */
+    // By setting to 0xAA, we expose bugs in yy_init_globals. Leave at 0x00 for releases.
     // memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
 
     yy_init_globals(yyg);
@@ -1432,13 +1424,13 @@ pub fn yylex_init(allocator: std.mem.Allocator) !Self {
 // and provide a zig style alias
 pub const init = yylex_init;
 
-// /* yylex_init_extra has the same functionality as yylex_init, but follows the
-//  * convention of taking the scanner as the last argument. Note however, that
-//  * this is a *pointer* to a scanner, as it will be allocated by this call (and
-//  * is the reason, too, why this function also must handle its own declaration).
-//  * The user defined value in the first argument will be available to yyalloc in
-//  * the yyextra field.
-//  */
+/// yylex_init_extra has the same functionality as yylex_init, but follows the
+/// convention of taking the scanner as the last argument. Note however, that
+/// this is a *pointer* to a scanner, as it will be allocated by this call (and
+/// is the reason, too, why this function also must handle its own declaration).
+/// The user defined value in the first argument will be available to yyalloc in
+/// the yyextra field.
+///
 pub fn yylex_init_extra(allocator: std.mem.Allocator, yy_user_defined: YY_EXTRA_TYPE) !Self {
     var self = try yylex_init(allocator);
     yyset_extra(yy_user_defined, self.yyg);
@@ -1450,94 +1442,94 @@ pub const initExtra = yylex_init_extra;
 %# Actually, that ended an if-rentrant section
 
 pub fn yy_init_globals(yyg: *yyguts_t) void {
-    // /* Initialization is the same as for the non-reentrant scanner.
-    //  * This function is called from yylex_destroy(), so don't allocate here.
-    //  */
+    // Initialization is the same as for the non-reentrant scanner.
+    // This function is called from yylex_destroy(), so don't allocate here.
+    //
 
-m4_ifdef( [[M4_YY_USE_LINENO]],
-[[
+    m4_ifdef( [[M4_YY_USE_LINENO]],
+    [[
     m4_ifdef( [[M4_YY_NOT_REENTRANT]],
     [[
-    // /* We do not touch yylineno unless the option is enabled. */
+    // We do not touch yylineno unless the option is enabled.
     yyg.yylineno =  1;
     ]])
-]])
-    YY_G(yy_buffer_stack) = null;
-    YY_G(yy_buffer_stack_top) = 0;
-    YY_G(yy_buffer_stack_max) = 0;
-    YY_G(yy_c_buf_p) = null;
-    YY_G(yy_init) = 0;
-    YY_G(yy_start) = 0;
+    ]])
 
-m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
-[[
-    YY_G(yy_start_stack_ptr) = 0;
-    YY_G(yy_start_stack_depth) = 0;
-    YY_G(yy_start_stack) = null;
-]])
+    yyg.yy_buffer_stack = 0;
+    yyg.yy_buffer_stack_top = 0;
+    yyg.yy_buffer_stack_max = 0;
+    yyg.yy_c_buf_p = 0;
+    yyg.yy_init = 0;
+    yyg.yy_start = 0;
 
-m4_ifdef( [[M4_YY_USES_REJECT]],
-[[
-    YY_G(yy_state_buf) = 0;
-    YY_G(yy_state_ptr) = 0;
-    YY_G(yy_full_match) = 0;
-    YY_G(yy_lp) = 0;
-]])
+    m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
+    [[
+    yyg.yy_start_stack_ptr = 0;
+    yyg.yy_start_stack_depth = 0;
+    yyg.yy_start_stack = 0;
+    ]])
 
-m4_ifdef( [[M4_YY_TEXT_IS_ARRAY]],
-[[
-    YY_G(yytext_r) = 0;
-    YY_G(yy_more_offset) = 0;
-    YY_G(yy_prev_more_offset) = 0;
-]])
+    m4_ifdef( [[M4_YY_USES_REJECT]],
+    [[
+    yyg.yy_state_buf = 0;
+    yyg.yy_state_ptr = 0;
+    yyg.yy_full_match = 0;
+    yyg.yy_lp = 0;
+    ]])
 
-    // /* Defined in main.c */
+    m4_ifdef( [[M4_YY_TEXT_IS_ARRAY]],
+    [[
+    yyg.yytext_r = 0;
+    yyg.yy_more_offset = 0;
+    yyg.yy_prev_more_offset = 0;
+    ]])
+
+    // Defined in main.c
     yyg.yyin = std.io.getStdIn();
     yyg.yyout = std.io.getStdOut();
 
-    // /* For future reference: Set errno on error, since we are called by
-    //  * yylex_init()
-    //  */
+    // For future reference: Set errno on error, since we are called by
+    // yylex_init()
+    //
 }
 
-
 pub fn yylex_destroy(this: *Self) void {
-    // /* Pop the buffer stack, destroying each element. */
-	while(YY_CURRENT_BUFFER(this.yyg) != null) {
-		yy_delete_buffer( YY_CURRENT_BUFFER(this.yyg), yyg);
-		YY_CURRENT_BUFFER_LVALUE(this.yyg).* = null;
-		yypop_buffer_state(this.yyg);
+    var yyg = this.yyg;
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+    // Pop the buffer stack, destroying each element.
+	while(yy_current_buffer != null) {
+		yy_delete_buffer(yy_current_buffer, yyg);
+		yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = 0;
+		yypop_buffer_state(yyg);
+        yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	}
 
-	// /* Destroy the stack itself. */
-    this.allocator.destroy(YY_G(yy_buffer_stack));
+	// Destroy the stack itself.
+    this.allocator.destroy(yyg.yy_buffer_stack);
 
-m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
-[[
-    // /* Destroy the start condition stack. */
-    this.allocator.destroy(YY_G(yy_start_stack));
-]])
+    m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
+    [[
+    // Destroy the start condition stack.
+    this.allocator.destroy(yyg.yy_start_stack);
+    ]])
 
-m4_ifdef( [[M4_YY_USES_REJECT]],
-[[
-    this.allocator.free(YY_G(yy_state_buf));
-]])
+    m4_ifdef( [[M4_YY_USES_REJECT]],
+    [[
+    this.allocator.free(yyg.yy_state_buf);
+    ]])
 
-    // /* Reset the globals. This is important in a non-reentrant scanner so the next time
-    //  * yylex() is called, initialization will occur. */
-    // yy_init_globals( M4_YY_CALL_ONLY_ARG);
+    // Reset the globals. This is important in a non-reentrant scanner so the
+    // next time yylex() is called, initialization will occur.
+    yy_init_globals(yyg);
 
-    // /* Destroy the main struct (reentrant only). */
-    this.allocator.destroy(this.yyg);
+    // Destroy the main struct (reentrant only).
+    this.allocator.destroy(yyg);
 }
 
 pub const deinit = yylex_destrory;
 
 m4_ifdef([[M4_YY_MAIN]], [[
-int main (void);
-
-int main ()
-{
+pub const fn main () !u8 {
     var lexer = try yylex_init(std.heap.page_allocator);
     lexer.yylex();
     yylex_destroy(lexer);

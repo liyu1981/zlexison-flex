@@ -129,7 +129,7 @@ static void geneoltbl (void)
 
 	outn ("m4_ifdef( [[M4_YY_USE_LINENO]],[[");
 	outn ("// /* Table of booleans, true if rule could match eol. */");
-	out_str_dec("const %s: [_]i32 = [%d]i32{ 0, \n", "yy_rule_can_match_eol", num_rules + 1);
+	out_str_dec("const %s: []i32 = [%d]i32{ 0, \n", "yy_rule_can_match_eol", num_rules + 1);
 	// out_str_dec (get_int32_decl (), "yy_rule_can_match_eol",
 	// 	     num_rules + 1);
 
@@ -468,7 +468,7 @@ void genecs (void)
 	int i, j;
 	int     numrows;
 
-	out_str_dec("const %s: [_]u8 = [%d]u8{ 0,\n", "yy_ec", csize);
+	out_str_dec("const %s: []u8 = [%d]u8{ 0,\n", "yy_ec", csize);
 	// out_str_dec (get_yy_char_decl (), "yy_ec", csize);
 
 	for (i = 1; i < csize; ++i) {
@@ -516,8 +516,8 @@ void gen_find_action (void)
 			outn ("m4_ifdef( [[M4_YY_USES_REJECT]],\n[[");
 		if(reject_really_used)
 			outn ("}\n");
-			outn ("// LOOP_START_FIND_RULE");
-			outn ("if (loop_control & LOOP_START_FIND_RULE > 0) {");
+			outn ("// LOOP_START_YY_FIND_RULE");
+			outn ("if (loop_control & LOOP_START_YY_FIND_RULE > 0) {");
 			outn ("// find_rule: // we branch to this label when backing up");
 		if (!variable_trailing_context_rules)
 			outn ("]])\n");
@@ -1102,7 +1102,7 @@ void gentabs (void)
 		dfaacc[end_of_buffer_state].dfaacc_set =
 			EOB_accepting_list;
 
-		out_str_dec("const %s: [_]i32 = [%d]i32{ 0, ", "yy_acclist",MAX (numas, 1) + 1);
+		out_str_dec("const %s: []i32 = [%d]i32{ 0, ", "yy_acclist",MAX (numas, 1) + 1);
 		//out_str_dec (long_align ? get_int32_decl () :
 		// 	     get_int16_decl (), "yy_acclist", MAX (numas,
 		// 						   1) + 1);
@@ -1213,7 +1213,7 @@ void gentabs (void)
 		 */
 		++k;
 
-	out_str_dec("const %s: [_]i32 = [%d]i32{ 0,", "yy_accept", k);
+	out_str_dec("const %s: []i32 = [%d]i32{ 0,", "yy_accept", k);
 	// out_str_dec (long_align ? get_int32_decl () : get_int16_decl (),
 	// 	     "yy_accept", k);
 
@@ -1289,7 +1289,7 @@ void gentabs (void)
 			fputs (_("\n\nMeta-Equivalence Classes:\n"),
 			       stderr);
 
-		out_str_dec("const %s: [_]u8 = [%d]u8 { 0,\n", "yy_meta", numecs + 1);
+		out_str_dec("const %s: []u8 = [%d]u8 { 0,\n", "yy_meta", numecs + 1);
 		// out_str_dec (get_yy_char_decl (), "yy_meta", numecs + 1);
 		buf_prints (&yydmap_buf,
 			    "\t{YYTD_ID_META, (void**)&yy_meta, sizeof(%s)},\n",
@@ -1319,7 +1319,7 @@ void gentabs (void)
 	total_states = lastdfa + numtemps;
 
 	/* Begin generating yy_base */
-	out_str_dec("const %s: [_]i16 = [%d]i16{ 0, \n", "yy_base", total_states + 1);
+	out_str_dec("const %s: []i16 = [%d]i16{ 0, \n", "yy_base", total_states + 1);
 	// out_str_dec ((tblend >= INT16_MAX || long_align) ?
 	// 	     get_int32_decl () : get_int16_decl (),
 	// 	     "yy_base", total_states + 1);
@@ -1377,7 +1377,7 @@ void gentabs (void)
 
 
 	/* Begin generating yy_def */
-	out_str_dec("const %s: [_]i16 = [%d]i16 { 0, \n", "yy_def", total_states + 1);
+	out_str_dec("const %s: []i16 = [%d]i16 { 0, \n", "yy_def", total_states + 1);
 	// out_str_dec ((total_states >= INT16_MAX || long_align) ?
 	// 	     get_int32_decl () : get_int16_decl (),
 	// 	     "yy_def", total_states + 1);
@@ -1410,7 +1410,7 @@ void gentabs (void)
 
 
 	/* Begin generating yy_nxt */
-	out_str_dec("const %s: [_]i16 = [%d]i16 { 0, \n", "yy_nxt", tblend + 1);
+	out_str_dec("const %s: []i16 = [%d]i16 { 0, \n", "yy_nxt", tblend + 1);
 	// out_str_dec ((total_states >= INT16_MAX || long_align) ?
 	// 	     get_int32_decl () : get_int16_decl (), "yy_nxt",
 	// 	     tblend + 1);
@@ -1448,7 +1448,7 @@ void gentabs (void)
 	/* End generating yy_nxt */
 
 	/* Begin generating yy_chk */
-	out_str_dec("const %s: [_]i16 = [%d]i16{ 0, \n", "yy_chk", tblend + 1);
+	out_str_dec("const %s: []i16 = [%d]i16{ 0, \n", "yy_chk", tblend + 1);
 	// out_str_dec ((total_states >= INT16_MAX || long_align) ?
 	// 	     get_int32_decl () : get_int16_decl (), "yy_chk",
 	// 	     tblend + 1);
@@ -1905,7 +1905,8 @@ void make_tables (void)
 		}
 
 		else {
-			outn ("\tif (YY_CURRENT_BUFFER_LVALUE(yyg).yy_is_interactive) {");
+			outn ("\tconst yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];");
+			outn ("\tif (yy_current_buffer.yy_is_interactive) {");
 			outn ("\t\tvar c: u8 = '*';");
 			outn ("\t\tvar n: c_int = 0;");
 			outn ("\t\twhile(n < max_size) : (n += 1) {");
@@ -1932,7 +1933,7 @@ void make_tables (void)
 	if (bol_needed) {
 		indent_puts ("if ( yyleng > 0 ) \\");
 		++indent_level;
-		indent_puts ("YY_CURRENT_BUFFER_LVALUE->yy_at_bol = \\");
+		indent_puts ("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top]->yy_at_bol = \\");
 		indent_puts ("\t\t(yytext[yyleng - 1] == '\\n'); \\");
 		--indent_level;
 	}
@@ -1957,7 +1958,7 @@ void make_tables (void)
 		++indent_level;
 		indent_puts ("{");
 		indent_puts
-			("YY_G(yy_more_len) = (int) (YY_G(yy_c_buf_p) - YY_G(yytext_ptr));");
+			("YY_G(yy_more_len) = YY_G(yy_c_buf_p) - YY_G(yytext_ptr);");
 		indent_puts ("YY_G(yy_more_flag) = 0;");
 		indent_puts ("}");
 		--indent_level;
@@ -1987,9 +1988,9 @@ void make_tables (void)
 		 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
 				"YY_G(yy_more_len)") : "0");
 	do_indent ();
-	outn ("while(yyl < yyleng) : (yyl += 1) {");
+	outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
 	++indent_level;
-	indent_puts ("if ( yytext[yyl] == '\\n' )");
+	indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' )");
 	++indent_level;
 	indent_puts ("M4_YY_INCR_LINENO()");
 	--indent_level;
@@ -2151,10 +2152,10 @@ void make_tables (void)
 	/* Update BOL and yylineno inside of input(). */
 	if (bol_needed) {
 		indent_puts
-			("YY_CURRENT_BUFFER_LVALUE->yy_at_bol = (c == '\\n');");
+			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol = (c == '\\n');");
 		if (do_yylineno) {
 			indent_puts
-				("if ( YY_CURRENT_BUFFER_LVALUE->yy_at_bol )");
+				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol)");
 			++indent_level;
 			indent_puts ("M4_YY_INCR_LINENO()");
 			--indent_level;
