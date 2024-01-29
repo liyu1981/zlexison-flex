@@ -515,7 +515,10 @@ void gen_find_action (void)
 		if (!variable_trailing_context_rules)
 			outn ("m4_ifdef( [[M4_YY_USES_REJECT]],\n[[");
 		if(reject_really_used)
-			outn ("find_rule: while(true) { // /* we branch to this label when backing up */");
+			outn ("}\n");
+			outn ("// LOOP_START_FIND_RULE");
+			outn ("if (loop_control & LOOP_START_FIND_RULE > 0) {");
+			outn ("// find_rule: // we branch to this label when backing up");
 		if (!variable_trailing_context_rules)
 			outn ("]])\n");
 
@@ -584,7 +587,9 @@ void gen_find_action (void)
 			--indent_level;
 
 			indent_puts ("++YY_G(yy_lp);");
-			indent_puts ("goto find_rule;");
+			indent_puts ("loop_control = LOOP_START_FIND_RULE;");
+			indent_puts ("continue;");
+			// indent_puts ("goto find_rule;");
 		}
 
 		else {
@@ -1963,7 +1968,10 @@ void make_tables (void)
 	gen_start_state ();
 
 	/* Note, don't use any indentation. */
-	outn ("yy_match: while(true) {");
+	outn ("}\n");
+	outn ("// LOOP_START_YY_MATCH");
+	outn ("if (loop_control & LOOP_START_YY_MATCH > 0) {");
+	outn ("// yy_match:");
 	gen_next_match ();
 
 	skelout ();		/* %% [10.0] - break point in skel */
