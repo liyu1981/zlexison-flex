@@ -627,7 +627,7 @@ M4QEND      "]""]"
 	^"%%".*		{
 			sectnum = 3;
 			BEGIN(no_section3_escape ? SECT3_NOESCAPE : SECT3);
-			outn("/* Begin user sect3 */");
+			outn("// /* Begin user sect3 */");
 			yyterminate(); /* to stop the parser */
 
 			}
@@ -748,7 +748,7 @@ nmstr[yyleng - 2 - end_is_ws] = '\0';  /* chop trailing brace */
                     if (lex_compat || posix_compat){
                         /* Push back the "?#" and treat it like a normal parens. */
                         yyless(1);
-                        sf_push(); 
+                        sf_push();
                         return '(';
                     }
                     else

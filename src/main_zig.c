@@ -466,7 +466,7 @@ void check_options (void)
         struct Buf tmpbuf;
         buf_init(&tmpbuf, sizeof(char));
         for (i = 1; i <= lastsc; i++) {
-             char *str, *fmt = "#define %s %d\n";
+             char *str, *fmt = "pub const %s = %d;\n";
              size_t strsz;
 
              strsz = strlen(fmt) + strlen(scname[i]) + (size_t)(1 + ceil (log10(i))) + 2;
@@ -1599,7 +1599,7 @@ void readin (void)
 		outn ("\n#define FLEX_DEBUG");
 
 	OUT_BEGIN_CODE ();
-	outn ("typedef flex_uint8_t YY_CHAR;");
+	// outn ("typedef flex_uint8_t YY_CHAR;");
 	OUT_END_CODE ();
 
 	if (C_plus_plus) {
@@ -1644,8 +1644,9 @@ void readin (void)
 	OUT_BEGIN_CODE ();
 	if (fullspd)
 		outn ("typedef const struct yy_trans_info *yy_state_type;");
-	else if (!C_plus_plus)
-		outn ("typedef int yy_state_type;");
+	else if (!C_plus_plus) {
+		// outn ("typedef int yy_state_type;");
+	}
 	OUT_END_CODE ();
 
 	if (lex_compat)
@@ -1688,7 +1689,7 @@ void readin (void)
 		}
 		else {
 			if (reentrant) {
-				outn ("#define yytext_ptr yytext_r");
+				// outn ("#define yytext_ptr yytext_r");
 			}
 			else {
 				outn ("extern char *yytext;");

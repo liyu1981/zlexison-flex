@@ -19,7 +19,13 @@ libfl_la_LDFLAGS = -version-info @SHARED_VERSION_INFO@
 
 stage1flex_SOURCES = \
 	scan.l \
-	$(COMMON_SOURCES)
+	$(COMMON_SOURCES) \
+	parse.y \
+	gen.c \
+	main.c \
+	misc.c \
+	nfa.c \
+	skel.c
 
 if CROSS
 stage1flex_LDADD =
@@ -41,10 +47,16 @@ stage1flex_CFLAGS = $(AM_CFLAGS)
 endif
 
 flex_SOURCES = \
-	$(COMMON_SOURCES)
+	$(COMMON_SOURCES) \
+	parse_zig.c \
+	gen_zig.c \
+	main_zig.c \
+	misc_zig.c \
+	nfa_zig.c \
+	zig_skel.c
 
 nodist_flex_SOURCES = \
-	stage1scan.c
+	stage1scan_zig.c
 
 flex_CFLAGS = $(AM_CFLAGS) $(WARNINGFLAGS)
 
@@ -56,18 +68,12 @@ COMMON_SOURCES = \
 	filter.c \
 	flexdef.h \
 	flexint.h \
-	gen.c \
-	main.c \
-	misc.c \
-	nfa.c \
 	options.c \
 	options.h \
-	parse.y \
 	regex.c \
 	scanflags.c \
 	scanopt.c \
 	scanopt.h \
-	skel.c \
 	sym.c \
 	tables.c \
 	tables.h \
