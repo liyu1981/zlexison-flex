@@ -48,6 +48,19 @@ endif
 
 flex_SOURCES = \
 	$(COMMON_SOURCES) \
+	parse.c \
+	gen.c \
+	main.c \
+	misc.c \
+	nfa.c \
+	skel.c
+
+nodist_flex_SOURCES = \
+	stage1scan.c
+
+# zlex as flex
+zflex_SOURCES = \
+	$(COMMON_SOURCES) \
 	parse_zig.c \
 	gen_zig.c \
 	main_zig.c \
@@ -55,7 +68,7 @@ flex_SOURCES = \
 	nfa_zig.c \
 	zig_skel.c
 
-nodist_flex_SOURCES = \
+nodist_zflex_SOURCES = \
 	stage1scan_zig.c
 
 flex_CFLAGS = $(AM_CFLAGS) $(WARNINGFLAGS)

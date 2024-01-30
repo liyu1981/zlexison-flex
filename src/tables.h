@@ -41,6 +41,9 @@ extern  "C" {
 /* *INDENT-ON* */
 #endif
 
+#include <stdio.h>
+#include <stdbool.h>
+
 /* Tables serialization API declarations. */
 #include "tables_shared.h"
 struct yytbl_writer {

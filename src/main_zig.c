@@ -195,7 +195,11 @@ int flex_main (int argc, char *argv[])
 }
 
 /* Wrapper around flex_main, so flex_main can be built as a library. */
+#ifdef FROM_ZIGBUILD
+int _main (int argc, char *argv[])
+#else
 int main (int argc, char *argv[])
+#endif
 {
 #if ENABLE_NLS
 #if HAVE_LOCALE_H

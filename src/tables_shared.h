@@ -68,6 +68,7 @@ dnl  flex code (hence the name "_shared").
 #define yypad64(n) ((8-((n)%8))%8)
 #endif
 
+#include "flexint.h"
 
 #ifndef YYTABLES_TYPES
 #define YYTABLES_TYPES
