@@ -1,3 +1,5 @@
+src/flex
+src/zflex
 *.orig
 *.rej
 *.tar.bz2

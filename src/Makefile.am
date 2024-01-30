@@ -4,7 +4,7 @@ LIBS = @LIBS@
 
 m4 = @M4@
 
-bin_PROGRAMS = flex
+bin_PROGRAMS = flex zflex
 if ENABLE_BOOTSTRAP
 noinst_PROGRAMS = stage1flex
 endif
