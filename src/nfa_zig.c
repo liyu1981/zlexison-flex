@@ -285,7 +285,7 @@ void    finish_rule (int mach, int variable_trail_rule, int headcnt, int trailcn
 	 * as that'll result in multiple YY_RULE_SETUP's.
 	 */
 	if (!continued_action)
-		add_action ("YY_RULE_SETUP(this);\n");
+		add_action ("try YY_RULE_SETUP(this);\n");
 
 	line_directive_out(NULL, 1);
         add_action("[[");

@@ -1496,7 +1496,7 @@ yyreduce:
 				add_action(
 				"YY_FATAL_ERROR( \"flex scanner jammed\" )" );
 			else
-				add_action( "ECHO(yyg)" );
+				add_action( "try ECHO(yyg)" );
 
 			add_action( ";\n\t},]]\n" );
 			}
