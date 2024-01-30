@@ -728,11 +728,12 @@ void gen_next_compressed_state (char *char_map)
 	 */
 	gen_backing_up ();
 
+	indent_puts("var c1 = yy_chk[yy_base[yy_current_state] + yy_c];");
 	indent_puts
-		("while(yy_chk[yy_base[yy_current_state_.*] + yy_c] != yy_current_state_.*)");
+		("while(c1 != yy_current_state)");
 	++indent_level;
 	indent_puts ("{");
-	indent_puts ("yy_current_state_.* = yy_def[yy_current_state_.*];");
+	indent_puts ("yy_current_state_.* = yy_def[yy_current_state];");
 
 	if (usemecs) {
 		/* We've arrange it so that templates are never chained
@@ -745,18 +746,19 @@ void gen_next_compressed_state (char *char_map)
 		do_indent ();
 
 		/* lastdfa + 2 is the beginning of the templates */
-		out_dec ("if ( yy_current_state_.* >= %d )\n", lastdfa + 2);
+		out_dec ("if ( yy_current_state >= %d )\n", lastdfa + 2);
 
 		++indent_level;
 		indent_puts ("yy_c = yy_meta[yy_c];");
 		--indent_level;
+		indent_puts("c1 = yy_chk[yy_base[yy_current_state] + yy_c];");
 	}
 
 	indent_puts ("}");
 	--indent_level;
 
 	indent_puts
-		("yy_current_state_.* = yy_nxt[yy_base[yy_current_state_.*] + yy_c];");
+		("yy_current_state_.* = yy_nxt[yy_base[yy_current_state] + yy_c];");
 }
 
 
@@ -844,7 +846,6 @@ void gen_next_match (void)
 		indent_puts ("yy_cp += 1;");
 
 
-		indent_puts ("}");
 		--indent_level;
 
 		do_indent ();
@@ -854,6 +855,8 @@ void gen_next_match (void)
 		else
 			out_dec ("if ( yy_current_state == %d ) break;\n",
 					jamstate);
+
+		indent_puts ("}");
 
 		if (!reject && !interactive) {
 			indent_puts("@compileError(\"not support disable reject & interactive same time!\");");
@@ -937,7 +940,7 @@ void gen_next_state (int worry_about_NULs)
 		gen_backing_up ();
 
 	if (reject) {
-		indent_puts ("yyg.yy_state_ptr = yy_current_state;");
+		indent_puts ("yyg.yy_state_ptr.* = yy_current_state;");
 		indent_puts ("yyg.yy_state_ptr += 1;");
 	}
 }
