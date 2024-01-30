@@ -517,7 +517,7 @@ void gen_find_action (void)
 		if(reject_really_used)
 			outn ("}\n");
 			outn ("// LOOP_START_YY_FIND_RULE");
-			outn ("if (loop_control & LOOP_START_YY_FIND_RULE > 0) {");
+			outn ("if (loop_control & LOOP_STEP_YY_FIND_RULE > 0) {");
 			outn ("// find_rule: // we branch to this label when backing up");
 		if (!variable_trailing_context_rules)
 			outn ("]])\n");
@@ -1974,7 +1974,7 @@ void make_tables (void)
 	/* Note, don't use any indentation. */
 	outn ("}\n");
 	outn ("// LOOP_START_YY_MATCH");
-	outn ("if (loop_control & LOOP_START_YY_MATCH > 0) {");
+	outn ("if (loop_control & LOOP_STEP_YY_MATCH > 0) {");
 	outn ("// yy_match:");
 	gen_next_match ();
 
