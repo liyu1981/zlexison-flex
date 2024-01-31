@@ -43,7 +43,8 @@ s/m4preproc_/m4_/g
 ' "$srcdir/zig.skl" |
 "$m4" -P -I "$srcdir" "-DFLEX_MAJOR_VERSION=$1" \
    "-DFLEX_MINOR_VERSION=$2" \
-   "-DFLEX_SUBMINOR_VERSION=$3" |
+   "-DFLEX_SUBMINOR_VERSION=$3" \
+   "-DZLEX_VERSION=$4" |
 sed '/^%#/d
 s/m4_/m4preproc_/g
 s/a4_/4_/g
