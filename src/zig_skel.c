@@ -611,7 +611,7 @@ const char *skel[] = {
   "",
   "                    EOB_ACT_LAST_MATCH => {",
   "                        yyg.yy_c_buf_p =",
-  "                            yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_ch_buf[yyg.yy_n_chars];",
+  "                            &(yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_ch_buf[yyg.yy_n_chars]);",
   "",
   "                        yy_current_state = yy_get_previous_state(yyg);",
   "",
