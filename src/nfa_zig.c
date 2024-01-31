@@ -249,7 +249,7 @@ void    finish_rule (int mach, int variable_trail_rule, int headcnt, int trailcn
 			char   *scanner_bp = "yy_bp";
 
 			add_action
-				("*yy_cp = YY_G(yy_hold_char); /* undo effects of setting up yytext */\n");
+				("yy_cp.* = yyg.yy_hold_char; // undo effects of setting up yytext\n");
 
 			if (headcnt > 0) {
 				if (rule_has_nl[num_rules]) {
@@ -265,17 +265,22 @@ void    finish_rule (int mach, int variable_trail_rule, int headcnt, int trailcn
 			else {
 				if (rule_has_nl[num_rules]) {
 					snprintf (action_text, sizeof(action_text),
-						 "YY_LINENO_REWIND_TO(yy_cp - %d);\n", trailcnt);
+						 "YY_LINENO_REWIND_TO(yy_cp - %d, yyg);\n", trailcnt);
+					// snprintf (action_text, sizeof(action_text),
+					//	 "YY_LINENO_REWIND_TO(yy_cp - %d);\n", trailcnt);
 					add_action (action_text);
 				}
 
-				snprintf (action_text, sizeof(action_text), "%s -= %d;\n",
-					 scanner_cp, trailcnt);
+
+				add_action (scanner_cp); add_action (";\n");
+				snprintf (action_text, sizeof(action_text), "yy_cp -= %d;\n", trailcnt);
+				// snprintf (action_text, sizeof(action_text), "%s -= %d;\n",
+				//	 scanner_cp, trailcnt);
 				add_action (action_text);
 			}
 
 			add_action
-				("YY_DO_BEFORE_ACTION; /* set up yytext again */\n");
+				("YY_DO_BEFORE_ACTION(&yy_cp, &yy_bp, this.yyg); // set up yytext again\n");
 		}
 	}
 

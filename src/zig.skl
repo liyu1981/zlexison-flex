@@ -76,15 +76,15 @@ pub const YYSTYPE = struct {};
 pub const YYLTYPE = struct {};
 pub const YY_EXTRA_TYPE = struct {};
 
+allocator: std.mem.Allocator = undefined,
+yyg: *yyguts_t = undefined,
+
 %# /* Promotes a possibly negative, possibly signed char to an
 %# *   integer in range [0..255] for use as an array index.
 %# */
 pub inline fn YY_SC_TO_UI(comptime T:type, c: T) u8 {
     return c;
 }
-
-allocator: std.mem.Allocator = undefined,
-yyg: *yyguts_t = undefined,
 
 /// util for calculate c pointer distance.
 inline fn cPtrDistance(comptime T: type, p1: [*c]T, p2: [*c]T) usize {
@@ -131,14 +131,14 @@ m4_define( [[YYFARGS2]], [[($1 $2, $3 $4 M4_YY_DEF_LAST_ARG)]])
 m4_define( [[YYFARGS3]], [[($1 $2, $3 $4, $5 $6 M4_YY_DEF_LAST_ARG)]])
 
 /// Enter a start condition. All start condition should be auto generated with names, like Self.INITIAL
-pub fn BEGIN(this: *Self, c: usize) void {
-    this.yyg.yy_start = 1 + 2 * c;
+pub fn BEGIN(c: usize, yyg: *yyguts_t) void {
+    yyg.yy_start = 1 + 2 * c;
 }
 
 /// Translate the current start state into a value that can be later handed to
 /// BEGIN to return to the state.  The YYSTATE alias is for lex compatibility.
-pub fn YY_START(this: *Self) usize {
-    return (this.yyg.yy_start - 1) / 2;
+pub fn YY_START(yyg: *yyguts_t) usize {
+    return (yyg.yy_start - 1) / 2;
 }
 
 pub const YYSTATE = YY_START;
@@ -272,7 +272,17 @@ pub fn yy_set_bol(at_bol: bool, yyg: *yyguts_t) void {
 }
 
 pub inline fn YY_AT_BOL(yyg: *yyguts_t) bool {
-    return yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol;
+    if (yyg.yy_buffer_stack == null) return true;
+    if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] == null) return true;
+    return yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol;
+}
+
+pub inline fn YY_AT_BOL_AS(comptime T: type, yyg: *yyguts_t) T {
+    if (YY_AT_BOL(yyg)) {
+        return @intCast(1);
+    } else {
+        return @intCast(0);
+    }
 }
 
 %% [1.0] yytext/yyin/yyout/yy_state_type/yylineno etc. def's & init go here
@@ -613,7 +623,7 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                             //
                             yyg.yy_c_buf_p = yyg.yytext_r + yyg.yy_more_len;
 
-                            yy_act = YY_STATE_EOF(this.YY_START());
+                            yy_act = YY_STATE_EOF(YY_START(yyg));
                             // break :do_action;
                             loop_control = LOOP_START_YY_ACT;
                             continue;
@@ -844,7 +854,7 @@ pub fn yyunput(c: u8, yy_bp: [*c]u8, yyg: *yyguts_t) void {
 }
 ]])
 
-pub fn input(yyg: *yyguts_t) u8 {
+pub fn input(yyg: *yyguts_t) !u8 {
     var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	var c: u8 = undefined;
 
@@ -855,15 +865,15 @@ pub fn input(yyg: *yyguts_t) u8 {
 		// If this occurs *before* the EOB characters, then it's a
 		// valid NUL; if not, then we've hit the end of the buffer.
 		//
-		if (yyg.yy_c_buf_p < &yy_current_buffer.yy_ch_buf[yyg.yy_n_chars]) {
+		if (yyg.yy_c_buf_p < &yy_current_buffer.?.yy_ch_buf[yyg.yy_n_chars]) {
 			// This was really a NUL.
 			yyg.yy_c_buf_p.* = 0;
 		} else {
             // need more input
-			const offset: usize = yyg.yy_c_buf_p - yyg.yytext_r;
+            const offset: usize = cPtrDistance(u8, yyg.yytext_r, yyg.yy_c_buf_p);
 			yyg.yy_c_buf_p += 1;
 
-            const nb = yy_get_next_buffer(yyg);
+            const nb = try yy_get_next_buffer(yyg);
 			switch (nb) {
 				EOB_ACT_LAST_MATCH, EOB_ACT_END_OF_FILE => {
 					// This happens because yy_g_n_b()
@@ -878,14 +888,14 @@ pub fn input(yyg: *yyguts_t) u8 {
 
                     if (nb == EOB_ACT_LAST_MATCH) {
 					    // Reset buffer status.
-					    yyrestart(yyg.yyin, yyg);
+					    try yyrestart(yyg.yyin_r, yyg);
                     }
 
 					if (yywrap(yyg) != 0)
 						return 0;
 
 					if (!yyg.yy_did_buffer_switch_on_eof)
-				        YY_NEW_FILE(yyg);
+				        try YY_NEW_FILE(yyg);
 					return input(yyg);
 				},
 
@@ -1224,7 +1234,7 @@ pub fn yy_push_state(new_state: usize, yyg: *yyguts_t) !void {
             yyg.yy_start_stack = try yyg.lexer.allocator.realloc(usize, yyg.yy_start_stack, new_size);
         }
 
-        yyg.yy_start_stack[yyg.yy_start_stack_ptr] = YY_START(yyg.lexer);
+        yyg.yy_start_stack[yyg.yy_start_stack_ptr] = YY_START(yyg);
         yyg.yy_start_stack_ptr += 1;
 
 	    BEGIN(new_state, yyg);

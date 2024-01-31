@@ -176,9 +176,9 @@ void gen_bu_action (void)
 
 	set_indent (3);
 
-	indent_puts ("case 0: /* must back up */");
-	indent_puts ("/* undo the effects of YY_DO_BEFORE_ACTION */");
-	indent_puts ("*yy_cp = YY_G(yy_hold_char);");
+	indent_puts ("0 => { // must back up");
+	indent_puts ("// undo the effects of YY_DO_BEFORE_ACTION");
+	indent_puts ("yy_cp.* = yyg.yy_hold_char;");
 
 	if (fullspd || fulltbl)
 		indent_puts ("yy_cp = YY_G(yy_last_accepting_cpos) + 1;");
@@ -186,11 +186,14 @@ void gen_bu_action (void)
 		/* Backing-up info for compressed tables is taken \after/
 		 * yy_cp has been incremented for the next state.
 		 */
-		indent_puts ("yy_cp = YY_G(yy_last_accepting_cpos);");
+		indent_puts ("yy_cp = yyg.yy_last_accepting_cpos;");
 
-	indent_puts ("yy_current_state = YY_G(yy_last_accepting_state);");
-	indent_puts ("goto yy_find_action;");
+	indent_puts ("yy_current_state_.* = yyg.yy_last_accepting_state;");
+	indent_puts ("// goto yy_find_action;");
+  indent_puts ("loop_control = LOOP_START_YY_FIND_ACTION;");
+  indent_puts ("continue;");
 	outc ('\n');
+	indent_puts ("},");
 
 	set_indent (0);
 }
@@ -631,11 +634,11 @@ void gen_find_action (void)
 			 */
 			indent_puts ("if ( yy_act == 0 )");
 			++indent_level;
-			indent_puts ("{ /* have to back up */");
+			indent_puts ("{ // /* have to back up */");
 			indent_puts
-				("yy_cp = YY_G(yy_last_accepting_cpos);");
+				("yy_cp = yyg.yy_last_accepting_cpos;");
 			indent_puts
-				("yy_current_state = YY_G(yy_last_accepting_state);");
+				("yy_current_state = yyg.yy_last_accepting_state;");
 			indent_puts
 				("yy_act = yy_accept[yy_current_state];");
 			indent_puts ("}");
@@ -959,7 +962,8 @@ void gen_NUL_trans (void)
 		/* We're going to need yy_cp lying around for the call
 		 * below to gen_backing_up().
 		 */
-		indent_puts ("char *yy_cp = YY_G(yy_c_buf_p);");
+		//indent_puts ("char *yy_cp = YY_G(yy_c_buf_p);");
+		indent_puts ("const yy_cp = yyg.yy_c_buf_p;");
 
 	outc ('\n');
 
@@ -1039,7 +1043,7 @@ void gen_start_state (void)
 	if (fullspd) {
 		if (bol_needed) {
 			indent_puts
-				("yy_current_state = yy_start_state_list[YY_G(yy_start) + YY_AT_BOL()];");
+				("yy_current_state = yy_start_state_list[YY_G(yy_start) + YY_AT_BOL_AS(usize, yyg)];");
 		}
 		else
 			indent_puts
@@ -1049,8 +1053,9 @@ void gen_start_state (void)
 	else {
 		indent_puts ("yy_current_state = YY_G(yy_start);");
 
-		if (bol_needed)
-			indent_puts ("yy_current_state += YY_AT_BOL();");
+		if (bol_needed) {
+			indent_puts ("yy_current_state += YY_AT_BOL_AS(usize, yyg);");
+		}
 
 		if (reject) {
 			/* Set up for storing up states. */
@@ -1793,12 +1798,8 @@ void make_tables (void)
 		}
 
 		outn("pub fn REJECT(yyg: *yyguts_t, yy_cp_: *[*c]u8) void {");
-		// outn ("#define REJECT \\");
-		// outn ("{ \\");
-		outn ("  yy_cp_.*.* = yyg.yy_hold_char; // /* undo effects of setting up yytext */");
-		outn ("  yy_cp_.* = yyg.yy_full_match; // /* restore poss. backed-over text */");
-		// outn ("*yy_cp = YY_G(yy_hold_char); /* undo effects of setting up yytext */ \\");
-		// outn ("yy_cp = YY_G(yy_full_match); /* restore poss. backed-over text */ \\");
+		outn ("  yy_cp_.*.* = yyg.yy_hold_char; // undo effects of setting up yytext ");
+		outn ("  yy_cp_.* = yyg.yy_full_match; // restore poss. backed-over text");
 
 		if (variable_trailing_context_rules) {
 			outn ("YY_G(yy_lp) = YY_G(yy_full_lp); /* restore orig. accepting pos. */ \\");
@@ -1808,17 +1809,20 @@ void make_tables (void)
 
 		outn ("  yyg.yy_lp += 1;");
 		// outn ("++YY_G(yy_lp); \\");
-		// outn ("goto find_rule; \\");
+		outn ("// TODO: really need a solution for this");
+		outn ("// goto find_rule;");
+		outn ("// loop_control = LOOP_START_YY_FIND_RULE;");
+		outn ("// continue;");
 
 		outn ("}");
 		outn ("]])\n");
 	}
 
 	else {
-		outn ("/* The intent behind this definition is that it'll catch");
-		outn (" * any uses of REJECT which flex missed.");
-		outn (" */");
-		outn ("#define REJECT reject_used_but_not_detected");
+		outn ("// /* The intent behind this definition is that it'll catch");
+		outn ("//  * any uses of REJECT which flex missed.");
+		outn ("//  */");
+		outn ("// #define REJECT reject_used_but_not_detected");
 	}
 
 	if (yymore_used) {
@@ -1864,9 +1868,9 @@ void make_tables (void)
 
 	else {
 		indent_puts
-			("#define yymore() yymore_used_but_not_detected");
-		indent_puts ("#define YY_MORE_ADJ 0");
-		indent_puts ("#define YY_RESTORE_YY_MORE_OFFSET");
+			("// #define yymore() yymore_used_but_not_detected");
+		indent_puts ("// #define YY_MORE_ADJ 0");
+		indent_puts ("// #define YY_RESTORE_YY_MORE_OFFSET");
 	}
 
 	if (!C_plus_plus) {
@@ -1931,17 +1935,19 @@ void make_tables (void)
 
 	skelout ();		/* %% [6.0] - break point in skel */
 
+	indent_puts ("pub fn YY_RULE_SETUP(this: *Self) !void {");
 	// indent_puts ("#define YY_RULE_SETUP \\");
 	++indent_level;
 	if (bol_needed) {
-		indent_puts ("if ( yyleng > 0 ) \\");
+		indent_puts ("if (this.yyg.yyleng_r > 0) {");
 		++indent_level;
-		indent_puts ("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top]->yy_at_bol = \\");
-		indent_puts ("\t\t(yytext[yyleng - 1] == '\\n'); \\");
+		indent_puts ("this.yyg.yy_buffer_stack[this.yyg.yy_buffer_stack_top].?.yy_at_bol =");
+		indent_puts ("\t\t(this.yyg.yytext_r[this.yyg.yyleng_r - 1] == '\\n');");
+		indent_puts ("}");
 		--indent_level;
 	}
-	//indent_puts ("YY_USER_ACTION");
-	indent_puts ("pub fn YY_RULE_SETUP(this: *Self) !void { try YY_USER_ACTION(this); }");
+	indent_puts ("try YY_USER_ACTION(this);");
+	indent_puts ("}");
 	--indent_level;
 
 	skelout ();		/* %% [7.0] - break point in skel */
@@ -2090,19 +2096,16 @@ void make_tables (void)
 	line_directive_out (stdout, 0);
 
 	/* generate cases for any missing EOF rules */
-	for (i = 1; i <= lastsc; ++i)
+	for (i = 1; i <= lastsc; ++i) {
 		if (!sceof[i]) {
 			do_indent ();
 			out_str ("YY_STATE_EOF(%s) => {\n", scname[i]);
-			did_eof_rule = true;
+			++indent_level;
+			indent_puts ("return YY_TERMINATED;");
+			--indent_level;
+			outn ("},\n");
 		}
-
-	if (did_eof_rule) {
-		++indent_level;
-		indent_puts ("return YY_TERMINATED;");
-		--indent_level;
 	}
-	outn ("},\n");
 
 
 	/* Generate code for handling NUL's, if needed. */
@@ -2155,10 +2158,10 @@ void make_tables (void)
 	/* Update BOL and yylineno inside of input(). */
 	if (bol_needed) {
 		indent_puts
-			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol = (c == '\\n');");
+			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol = (c == '\\n');");
 		if (do_yylineno) {
 			indent_puts
-				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol)");
+				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol)");
 			++indent_level;
 			indent_puts ("M4_YY_INCR_LINENO()");
 			--indent_level;
