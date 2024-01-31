@@ -1296,7 +1296,7 @@ pub inline fn yyget_lineno(yyg: *yyguts_t) usize {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == 0)
+        if (yy_current_buffer == null)
             return 0;
     ]])
     return yyg.yylineno;
@@ -1312,10 +1312,10 @@ pub fn yyget_column(yyg: *yyguts_t) usize {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == 0)
+        if (yy_current_buffer == null)
             return 0;
     ]])
-    return yyg.yycolumn;
+    return yyg.yycolumn_r;
 }
 ]])
 ]])
@@ -1371,7 +1371,7 @@ pub inline fn yyset_lineno(line_number: usize, yyg: *yyguts_t) void {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == 0)
+        if (yy_current_buffer == null)
            yy_fatal_error("yyset_lineno called with no buffer");
     ]])
     yyg.yylineno = line_number;
@@ -1390,10 +1390,10 @@ pub inline fn yyset_column(column_no: usize, yyg: *yyguts_t) void {
     [[
         // column is only valid if an input buffer exists.
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == 0)
+        if (yy_current_buffer == null)
            yy_fatal_error( "yyset_column called with no buffer");
     ]])
-    yyg.yycolumn = column_no;
+    yyg.yycolumn_r = column_no;
 }
 ]])
 ]])
