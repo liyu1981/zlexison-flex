@@ -1152,19 +1152,19 @@ void flexinit (int argc, char **argv)
 			break;
 
 		case OPT_BISON_BRIDGE:
-			bison_bridge_lval = true;
+			// bison_bridge_lval = true;
 			break;
 
 		case OPT_BISON_BRIDGE_LOCATIONS:
-			bison_bridge_lval = bison_bridge_lloc = true;
+			// bison_bridge_lval = bison_bridge_lloc = true;
 			break;
 
 		case OPT_REENTRANT:
-			reentrant = true;
+			// reentrant = true;
 			break;
 
 		case OPT_NO_REENTRANT:
-			reentrant = false;
+			// reentrant = false;
 			break;
 
 		case OPT_SKEL:
@@ -1300,7 +1300,7 @@ void flexinit (int argc, char **argv)
 
 		case OPT_STACK:
 			//buf_strdefine (&userdef_buf, "YY_STACK_USED", "1");
-            buf_m4_define( &m4defs_buf, "M4_YY_STACK_USED",0);
+            // buf_m4_define( &m4defs_buf, "M4_YY_STACK_USED",0);
 			break;
 
 		case OPT_STDINIT:
@@ -1316,11 +1316,11 @@ void flexinit (int argc, char **argv)
 			break;
 
 		case OPT_YYLINENO:
-			do_yylineno = true;
+			// do_yylineno = true;
 			break;
 
 		case OPT_NO_YYLINENO:
-			do_yylineno = false;
+			// do_yylineno = false;
 			break;
 
 		case OPT_YYWRAP:
@@ -1332,19 +1332,19 @@ void flexinit (int argc, char **argv)
 			break;
 
 		case OPT_YYMORE:
-			yymore_really_used = true;
+			// yymore_really_used = true;
 			break;
 
 		case OPT_NO_YYMORE:
-			yymore_really_used = false;
+			// yymore_really_used = false;
 			break;
 
 		case OPT_REJECT:
-			reject_really_used = true;
+			// reject_really_used = true;
 			break;
 
 		case OPT_NO_REJECT:
-			reject_really_used = false;
+			// reject_really_used = false;
 			break;
 
 		case OPT_NO_YY_PUSH_STATE:
@@ -1361,7 +1361,7 @@ void flexinit (int argc, char **argv)
 			break;
 		case OPT_NO_UNPUT:
 			//buf_strdefine (&userdef_buf, "YY_NO_UNPUT", "1");
-            buf_m4_define( &m4defs_buf, "M4_YY_NO_UNPUT",0);
+            // buf_m4_define( &m4defs_buf, "M4_YY_NO_UNPUT",0);
 			break;
 		case OPT_NO_YY_SCAN_BUFFER:
 			//buf_strdefine (&userdef_buf, "YY_NO_SCAN_BUFFER", "1");
@@ -1441,6 +1441,16 @@ void flexinit (int argc, char **argv)
 	}			/* while scanopt() */
 
 	scanopt_destroy (sopt);
+
+	// zflex forced options begin
+	reentrant = true;
+	do_yylineno = true;
+	reject_really_used = true;
+	yymore_really_used = true;
+	buf_m4_define(&m4defs_buf, "M4_YY_STACK_USED", 0);
+	bison_bridge_lval = true;
+	bison_bridge_lloc = true;
+	// zflex forced options end
 
 	num_input_files = argc - optind;
 	input_files = argv + optind;

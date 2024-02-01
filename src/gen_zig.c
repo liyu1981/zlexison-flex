@@ -1797,6 +1797,9 @@ void make_tables (void)
 				 (unsigned int) YY_TRAILING_HEAD_MASK);
 		}
 
+		outn ("// use REJECT as:");
+		outn ( "//   REJECT(yyg); loop_control = LOOP_START_YY_FIND_RULE; continue;");
+		outn ("// or use <REJECT> in code, generator will replace it");
 		outn("pub fn REJECT(yyg: *yyguts_t, yy_cp_: *[*c]u8) void {");
 		outn ("  yy_cp_.*.* = yyg.yy_hold_char; // undo effects of setting up yytext ");
 		outn ("  yy_cp_.* = yyg.yy_full_match; // restore poss. backed-over text");
@@ -1809,10 +1812,8 @@ void make_tables (void)
 
 		outn ("  yyg.yy_lp += 1;");
 		// outn ("++YY_G(yy_lp); \\");
-		outn ("// TODO: really need a solution for this");
 		outn ("// goto find_rule;");
-		outn ("// loop_control = LOOP_START_YY_FIND_RULE;");
-		outn ("// continue;");
+		outn ("// in source manual use as: REJECT(yyg); loop_control = LOOP_START_YY_FIND_RULE; continue;");
 
 		outn ("}");
 		outn ("]])\n");
@@ -2000,9 +2001,10 @@ void make_tables (void)
 	do_indent ();
 	outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
 	++indent_level;
-	indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' )");
+	indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' ) {");
 	++indent_level;
 	indent_puts ("M4_YY_INCR_LINENO()");
+	indent_puts ("}");
 	--indent_level;
 	indent_puts ("}");
 	--indent_level;
@@ -2162,10 +2164,11 @@ void make_tables (void)
 			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol = (c == '\\n');");
 		if (do_yylineno) {
 			indent_puts
-				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol)");
+				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol) {");
 			++indent_level;
 			indent_puts ("M4_YY_INCR_LINENO()");
 			--indent_level;
+			indent_puts ("}");
 		}
 	}
 

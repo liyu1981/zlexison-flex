@@ -1713,7 +1713,7 @@ yyreduce:
 			"all start conditions already have <<EOF>> rules" );
 
 				else
-					build_eof_action();
+					  build_eof_action();
 				}
 			}
 #line 1720 "parse.c"
@@ -2792,11 +2792,19 @@ void build_eof_action(void)
 			if (previous_continued_action /* && previous action was regular */)
 				add_action("YY_RULE_SETUP\n");
 
-			snprintf( action_text, sizeof(action_text), "case YY_STATE_EOF(%s):\n",
-				scname[scon_stk[i]] );
+			// snprintf( action_text, sizeof(action_text), "case YY_STATE_EOF(%s):\n",
+			//	scname[scon_stk[i]] );
+      if (strcmp(scname[scon_stk[i]], "INITIAL") == 0) {
+  			snprintf( action_text, sizeof(action_text), "YY_STATE_EOF(%s)",
+	  			scname[scon_stk[i]] );
+      } else {
+		  	snprintf( action_text, sizeof(action_text), ", YY_STATE_EOF(%s)",
+			  	scname[scon_stk[i]] );
+      }
 			add_action( action_text );
 			}
 		}
+    add_action (" => {");
 
 	line_directive_out(NULL, 1);
         add_action("[[");
