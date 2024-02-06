@@ -1474,6 +1474,13 @@ void flexinit (int argc, char **argv)
 	bison_bridge_lloc = true;
 	// zflex forced options end
 
+	// zflex options begin
+	char* env_zwpt = getenv("ZLEX_WITH_PARSER_TYPE");
+	if (env_zwpt != NULL) {
+				buf_m4_define(&m4defs_buf, "M4_ZLEX_WITH_PARSER_TYPE", 0);
+	}
+	// zflex options end
+
 	num_input_files = argc - optind;
 	input_files = argv + optind;
 	set_input_file (num_input_files > 0 ? input_files[0] : NULL);

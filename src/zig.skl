@@ -46,7 +46,7 @@ pub const version = [3]u8{FLEX_MAJOR_VERSION, FLEX_MINOR_VERSION, FLEX_SUBMINOR_
 m4_ifdef( [[M4_YY_IN_HEADER]], , [[m4_define([[M4_YY_NOT_IN_HEADER]], [[]])]])
 m4_ifdef( [[M4_YY_REENTRANT]], , [[m4_define([[M4_YY_NOT_REENTRANT]], [[]])]])
 
-%# This is the m4 way to say "(stack_used || is_reentrant)
+%# This is the m4 way to say (stack_used || is_reentrant)
 m4_ifdef( [[M4_YY_STACK_USED]], [[m4_define([[M4_YY_HAS_START_STACK_VARS]])]])
 m4_ifdef( [[M4_YY_REENTRANT]],  [[m4_define([[M4_YY_HAS_START_STACK_VARS]])]])
 
@@ -77,7 +77,7 @@ pub fn YY_USER_ACTION(this: *Self) anyerror!void {
 pub fn YY_USER_INIT(this: *Self) anyerror!void {
     _ = this;
 }
-pub const YYSTYPE = struct {};
+pub const YYSTYPE = m4_ifdef([[M4_ZLEX_WITH_PARSER_TYPE]], [[@import("parser_type.zig").YYSTYPE]], [[struct {}]]);
 pub const YYLTYPE = struct {
     first_line: usize = 1,
     first_column: usize = 1,
@@ -416,7 +416,7 @@ m4_ifdef( [[M4_YY_BISON_LVAL]],
     m4_dnl  accept the lval parameter.
 
     m4_define( [[M4_YY_LEX_PROTO]],
-               [[(this: *Self, yylval_param: *YYSTYPE)]])
+               [[(this: *Self, yylval: *YYSTYPE)]])
 ]])
 
 m4_ifdef( [[<M4_YY_BISON_LLOC>]],
@@ -424,7 +424,7 @@ m4_ifdef( [[<M4_YY_BISON_LLOC>]],
     m4_dnl  Locations are used. yylex should also accept the ylloc parameter.
 
     m4_define( [[M4_YY_LEX_PROTO]],
-               [[(this: *Self, yylval_param: *YYSTYPE, yylloc_param: *YYLTYPE)]])
+               [[(this: *Self, yylval: *YYSTYPE, yylloc: *YYLTYPE)]])
 ]])
 
 %endif
@@ -441,6 +441,8 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
     var yy_current_state: usize = 0;
     var yy_current_state_: *usize = &yy_current_state;
     _ = &yy_current_state_;
+    { _ = &yylval; }
+    { _ = &yylloc; }
 
     // simulate goto with step&start - definition start
     const LOOP_STEP_YY_ACT = 0x0001;
@@ -460,18 +462,10 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
 
     m4_ifdef( [[M4_YY_BISON_LVAL]],
     [[
-    var yylval: *YYSTYPE = yylval_param;
-    {
-        _ = &yylval;
-    }
     ]])
 
     m4_ifdef( [[<M4_YY_BISON_LLOC>]],
     [[
-    var yylloc: *YYLTYPE = yylloc_param;
-    {
-        _ = &yylloc;
-    }
     ]])
 
 	if (!yyg.yy_init) {

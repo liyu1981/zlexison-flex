@@ -1861,8 +1861,8 @@ void make_tables (void)
 			indent_puts("pub fn yymore(yyg: *yyguts_t) void {\n  yyg.yy_more_flag = 1;\n}");
 			//indent_puts
 			//	("#define yymore() (YY_G(yy_more_flag) = 1)");
-			indent_puts
-				("// #define YY_MORE_ADJ YY_G(yy_more_len)");
+			// indent_puts
+			// 	("// #define YY_MORE_ADJ YY_G(yy_more_len)");
 			// indent_puts ("#define YY_RESTORE_YY_MORE_OFFSET");
 		}
 	}
