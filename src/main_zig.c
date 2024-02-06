@@ -133,9 +133,17 @@ const char *escaped_qend   = "]]M4_YY_NOOP]M4_YY_NOOP]M4_YY_NOOP[[";
 /* For debugging. The max number of filters to apply to skeleton. */
 static int preproc_level = 1000;
 
+#ifdef FROM_ZIGBUILD
+static char *zlex_m4path = NULL;
+
+int flex_main (int argc, char *argv[], char* m4path);
+
+int flex_main (int argc, char *argv[], char* m4path)
+#else
 int flex_main (int argc, char *argv[]);
 
 int flex_main (int argc, char *argv[])
+#endif
 {
 	int     i, exit_status, child_status;
 
@@ -164,6 +172,11 @@ int flex_main (int argc, char *argv[])
         }
         return exit_status - 1;
     }
+
+	#ifdef FROM_ZIGBUILD
+		zlex_m4path = m4path;
+	#else
+	#endif
 
 	flexinit (argc, argv);
 
@@ -196,10 +209,9 @@ int flex_main (int argc, char *argv[])
 
 /* Wrapper around flex_main, so flex_main can be built as a library. */
 #ifdef FROM_ZIGBUILD
-int _main (int argc, char *argv[])
+int _main (int argc, char *argv[]) { return 0; }
 #else
 int main (int argc, char *argv[])
-#endif
 {
 #if ENABLE_NLS
 #if HAVE_LOCALE_H
@@ -212,6 +224,7 @@ int main (int argc, char *argv[])
 
 	return flex_main (argc, argv);
 }
+#endif
 
 /* check_options - check user-specified options */
 
@@ -345,6 +358,10 @@ void check_options (void)
 
     /* Setup the filter chain. */
     output_chain = filter_create_int(NULL, filter_tee_header, headerfilename);
+	#ifdef FROM_ZIGBUILD
+		if ((m4 = zlex_m4path) == NULL) {
+	#else
+	#endif
     if ( !(m4 = getenv("M4"))) {
 	    char *slash;
 		m4 = M4;
@@ -384,6 +401,11 @@ void check_options (void)
 			}
 		}
 	}
+	#ifdef FROM_ZIGBUILD
+	}
+	#else
+	#endif
+		fprintf(stderr, "using m4 from: %s\n", m4);
     filter_create_ext(output_chain, m4, "-P", 0);
     filter_create_int(output_chain, filter_fix_linedirs, NULL);
 
