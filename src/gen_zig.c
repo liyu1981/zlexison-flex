@@ -1949,6 +1949,7 @@ void make_tables (void)
 	}
 	indent_puts ("try YY_USER_ACTION(this);");
 	indent_puts ("yyset_column(this.yyg.yycolumn_r + this.yyg.yyleng_r, this.yyg);");
+	indent_puts ("this.yyg.updateYylloc();");
 	indent_puts ("}");
 	--indent_level;
 
