@@ -109,8 +109,7 @@ pub const YYLTYPE = struct {
                 this.last_column
             });
         } else {
-            std.debug.print("print YYLTYPE with 's'(full L<begin>:C<begin> - L<end>:C<end>) or 'sb'(L<begin>:C<begin>) or 'se'(L<end>:C<end>)", .{});
-            unreachable;
+            @panic("print YYLTYPE with 's'(full L<begin>:C<begin> - L<end>:C<end>) or 'sb'(L<begin>:C<begin>) or 'se'(L<end>:C<end>)", .{});
         }
     }
 };
@@ -345,7 +344,7 @@ pub fn YY_DO_BEFORE_ACTION(yy_cp_: *[*c]u8, yy_bp_: *[*c]u8, yyg: *yyguts_t) voi
 	yyg.yy_c_buf_p = yy_cp;
 }
 
-pub const TOK_TYPE = @import("zlexison.zig").TOK_TYPE;
+pub const TOK_TYPE = @import("zlexison.zig").yytoken_kind_t;
 
 %% [4.0] data tables for the DFA and the user's section 1 definitions go here
 
