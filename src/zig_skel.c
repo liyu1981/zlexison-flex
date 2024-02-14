@@ -83,7 +83,7 @@ const char *skel[] = {
   "                this.last_column",
   "            });",
   "        } else {",
-  "            @panic(\"print YYLTYPE with 's'(full L<begin>:C<begin> - L<end>:C<end>) or 'sb'(L<begin>:C<begin>) or 'se'(L<end>:C<end>)\", .{});",
+  "            @panic(\"print YYLTYPE with 's'(full L<begin>:C<begin> - L<end>:C<end>) or 'sb'(L<begin>:C<begin>) or 'se'(L<end>:C<end>)\");",
   "        }",
   "    }",
   "};",
