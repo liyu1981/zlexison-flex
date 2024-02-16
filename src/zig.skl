@@ -1467,15 +1467,15 @@ pub inline fn yyset_debug(bdebug: bool, yyg: *yyguts_t) void {
 %if-bison-bridge
 m4_ifdef( [[M4_YY_NO_GET_LVAL]],,
 [[
-pub inline fn yyget_lval(yyg: *yyguts_t) *YYSTYPE {
-    return yyg.yylval;
+pub inline fn yyget_lval(yyg: *yyguts_t) YYSTYPE {
+    return yyg.yylval_r.*;
 }
 ]])
 
 m4_ifdef( [[M4_YY_NO_SET_LVAL]],,
 [[
-pub inline fn yyset_lval(yylval_param: *YYSTYPE, yyg: *yyguts_t) void {
-    yyg.yylval = yylval_param;
+pub inline fn yyset_lval(yylval_param: YYSTYPE, yyg: *yyguts_t) void {
+    yyg.yylval_r.* = yylval_param;
 }
 ]])
 
@@ -1483,15 +1483,15 @@ m4_ifdef( [[<M4_YY_BISON_LLOC>]],
 [[
     m4_ifdef( [[M4_YY_NO_GET_LLOC]],,
     [[
-pub inline fn yyget_lloc(yyg: *yyguts_t) *YYLTYPE {
-    return yyg.yylloc;
+pub inline fn yyget_lloc(yyg: *yyguts_t) YYLTYPE {
+    return yyg.yylloc_r.*;
 }
     ]])
 
     m4_ifdef( [[M4_YY_NO_SET_LLOC]],,
     [[
-pub inline fn yyset_lloc(yylloc_param: *YYLTYPE, yyg: *yyguts_t) void {
-    yyg.yylloc = yylloc_param;
+pub inline fn yyset_lloc(yylloc_param: YYLTYPE, yyg: *yyguts_t) void {
+    yyg.yylloc_r.* = yylloc_param;
 }
     ]])
 ]])
