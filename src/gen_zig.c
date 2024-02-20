@@ -1948,8 +1948,9 @@ void make_tables (void)
 		--indent_level;
 	}
 	indent_puts ("try YY_USER_ACTION(this);");
-	indent_puts ("yyset_column(this.yyg.yycolumn_r + this.yyg.yyleng_r, this.yyg);");
 	indent_puts ("this.yyg.updateYylloc();");
+	indent_puts ("yyset_lineno(this.yyg.yylloc_r.last_line, this.yyg);");
+	indent_puts ("yyset_column(this.yyg.yylloc_r.last_column, this.yyg);");
 	indent_puts ("}");
 	--indent_level;
 
@@ -1993,24 +1994,24 @@ void make_tables (void)
 
 	skelout ();		/* %% [11.0] - break point in skel */
 	outn ("m4_ifdef( [[M4_YY_USE_LINENO]],[[");
-	indent_puts
-		("if ( yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] != 0) {");
-	++indent_level;
-	out_str ("var yyl = %s;\n",
-		 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
-				"YY_G(yy_more_len)") : "0");
-	do_indent ();
-	outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
-	++indent_level;
-	indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' ) {");
-	++indent_level;
-	indent_puts ("M4_YY_INCR_LINENO()");
-	indent_puts ("}");
-	--indent_level;
-	indent_puts ("}");
-	--indent_level;
-	indent_puts ("}");
-	--indent_level;
+	// indent_puts
+	// 	("if ( yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] != 0) {");
+	// ++indent_level;
+	// out_str ("var yyl = %s;\n",
+	// 	 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
+	//			"YY_G(yy_more_len)") : "0");
+	// do_indent ();
+	// outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
+	// ++indent_level;
+	// indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' ) {");
+	// ++indent_level;
+	// indent_puts ("M4_YY_INCR_LINENO()");
+	// indent_puts ("}");
+	// --indent_level;
+	// indent_puts ("}");
+	// --indent_level;
+	// indent_puts ("}");
+	// --indent_level;
 	outn ("]])");
 
 	skelout ();		/* %% [12.0] - break point in skel */

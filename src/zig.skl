@@ -79,10 +79,10 @@ pub fn YY_USER_INIT(this: *Self) anyerror!void {
 }
 pub const YYSTYPE = @import("zlexison.zig").YYSTYPE;
 pub const YYLTYPE = struct {
-    first_line: usize = 1,
-    first_column: usize = 1,
-    last_line: usize = 1,
-    last_column: usize = 1,
+    first_line: usize = 0,
+    first_column: usize = 0,
+    last_line: usize = 0,
+    last_column: usize = 0,
 
     pub fn format(
         this: YYLTYPE,
@@ -417,7 +417,15 @@ pub const yyguts_t = struct {
         yyg.yylloc_r.first_line = yyg.yylineno_r;
         yyg.yylloc_r.first_column = yyg.yycolumn_r;
         yyg.yylloc_r.last_line = yyg.yylineno_r;
-        yyg.yylloc_r.last_column = yyg.yycolumn_r + yyg.yyleng_r;
+        yyg.yylloc_r.last_column = yyg.yycolumn_r;
+        for (0..yyg.yyleng_r) |i| {
+            if (yyg.yytext_r[i] == '\n') {
+                yyg.yylloc_r.last_line += 1;
+                yyg.yylloc_r.last_column = 0;
+            } else {
+                yyg.yylloc_r.last_column += 1;
+            }
+        }
     }
 };
 
@@ -1563,7 +1571,7 @@ pub fn yy_init_globals(yyg: *yyguts_t) void {
     yyg.yy_last_accepting_cpos = 0;
     m4_ifdef( [[M4_YY_USE_LINENO]],
     [[
-    yyg.yylineno_r = 1;
+    yyg.yylineno_r = 0;
     yyg.yycolumn_r = 0;
     ]])
     yyg.yy_flex_debug_r = false;
