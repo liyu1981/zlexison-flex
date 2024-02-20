@@ -1148,12 +1148,13 @@ void flexinit (int argc, char **argv)
             break;
 
 		case OPT_MAIN:
-			buf_strdefine (&userdef_buf, "YY_MAIN", "1");
-			do_yywrap = false;
+			// buf_strdefine (&userdef_buf, "YY_MAIN", "1");
+			// do_yywrap = false;
+			buf_m4_define( &m4defs_buf, "M4_YY_MAIN", 0);
 			break;
 
 		case OPT_NO_MAIN:
-			buf_strdefine (&userdef_buf, "YY_MAIN", "0");
+			// buf_strdefine (&userdef_buf, "YY_MAIN", "0");
 			break;
 
 		case OPT_NO_LINE:

@@ -454,7 +454,7 @@ m4_ifdef( [[M4_YY_BISON_LVAL]],
     m4_dnl  accept the lval parameter.
 
     m4_define( [[M4_YY_LEX_PROTO]],
-               [[(this: *Self, yylval: *YYSTYPE)]])
+               [[(this: *Self, yylval_: *YYSTYPE)]])
 ]])
 
 m4_ifdef( [[<M4_YY_BISON_LLOC>]],
@@ -462,7 +462,7 @@ m4_ifdef( [[<M4_YY_BISON_LLOC>]],
     m4_dnl  Locations are used. yylex should also accept the ylloc parameter.
 
     m4_define( [[M4_YY_LEX_PROTO]],
-               [[(this: *Self, yylval: *YYSTYPE, yylloc: *YYLTYPE)]])
+               [[(this: *Self, yylval_: *YYSTYPE, yylloc_: *YYLTYPE)]])
 ]])
 
 %endif
@@ -476,8 +476,8 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
 	var yy_act: usize = 0;
     var yyg = this.yyg;
 
-    yyg.yylval_r = yylval;
-    yyg.yylloc_r = yylloc;
+    yyg.yylval_r = yylval_;
+    yyg.yylloc_r = yylloc_;
 
     var yy_current_state: usize = 0;
     var yy_current_state_: *usize = &yy_current_state;
@@ -1631,36 +1631,57 @@ pub fn yylex_destroy(this: *Self) void {
 pub const deinit = yylex_destroy;
 
 m4_ifdef([[M4_YY_MAIN]], [[
-pub const fn main () !u8 {
+pub fn main() !u8 {
+    const args = try std.process.argsAlloc(std.heap.page_allocator);
+    defer std.heap.page_allocator.free(args);
     const allocator = std.heap.page_allocator;
-    const args = try std.process.argsAlloc(allocator);
-    defer allocator.free(args);
 
-    var f = try std.fs.cwd().openFile(args[1], .{});
+    const stdout_writer = std.io.getStdOut().writer();
+
+    var f: std.fs.File = brk: {
+      if (args.len > 1) {
+        break :brk try std.fs.cwd().openFile(args[1], .{});
+      } else {
+        break :brk std.io.getStdIn();
+      }
+    };
     defer f.close();
 
-    const content = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
+    var content = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
     defer allocator.free(content);
+    _ = &content;
+    try stdout_writer.print("read {d}bytes\n", .{content.len});
 
-    var yylval_param: YYLexer.YYSTYPE = .{};
-    _ = &yylval_param;
-    var yylloc_param: YYLexer.YYLTYPE = .{};
-    _ = &yylval_param;
+    var yylval: YYLexer.YYSTYPE = YYLexer.YYSTYPE.default();
+    _ = &yylval;
+    var yylloc: YYLexer.YYLTYPE = .{};
+    _ = &yylloc;
 
     var lexer = YYLexer{ .allocator = std.heap.page_allocator };
+    YYLexer.context = YYLexer.Context.init(allocator);
+    defer YYLexer.context.deinit();
 
-    try yylex_init(&lexer);
-    defer yylex_destroy(&lexer);
+    try YYLexer.yylex_init(&lexer);
+    defer YYLexer.yylex_destroy(&lexer);
 
-    _ = try yy_scan_string(content, lexer.yyg);
+    _ = try YYLexer.yy_scan_string(content, lexer.yyg);
 
     while (true) {
-        const tk = lexer.yylex(&yylval_param, &yylloc_param) catch |err| {
+        const tk = lexer.yylex(&yylval, &yylloc) catch |err| {
             std.debug.print("{any}\n", .{err});
-            break;
+            return 1;
         };
         if (tk == YYLexer.YY_TERMINATED) break;
+        switch (@as(TOK_TYPE, @enumFromInt(tk))) {
+            .TOK_EOF => {
+                break;
+            },
+            else => |cur_tk| {
+                try stdout_writer.print("tk: {any} at loc: {s}\n", .{ cur_tk, yylloc });
+            },
+        }
     }
+
     return 0;
 }
 ]])
