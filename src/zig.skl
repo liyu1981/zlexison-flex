@@ -1640,6 +1640,8 @@ pub const deinit = yylex_destroy;
 
 m4_ifdef([[M4_YY_MAIN]], [[
 pub fn main() !u8 {
+    @compileError("Please copy this function to your scan.l and adapt to your need!");
+
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.heap.page_allocator.free(args);
     const allocator = std.heap.page_allocator;
@@ -1666,8 +1668,6 @@ pub fn main() !u8 {
     _ = &yylloc;
 
     var lexer = YYLexer{ .allocator = std.heap.page_allocator };
-    YYLexer.context = YYLexer.Context.init(allocator);
-    defer YYLexer.context.deinit();
 
     try YYLexer.yylex_init(&lexer);
     defer YYLexer.yylex_destroy(&lexer);
@@ -1680,8 +1680,8 @@ pub fn main() !u8 {
             return 1;
         };
         if (tk == YYLexer.YY_TERMINATED) break;
-        switch (@as(TOK_TYPE, @enumFromInt(tk))) {
-            .TOK_EOF => {
+        switch (tk) {
+            @as(usize, @intFromEnum(TOK_TYPE.YYEOF)) => {
                 break;
             },
             else => |cur_tk| {

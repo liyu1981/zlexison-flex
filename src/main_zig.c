@@ -405,7 +405,7 @@ void check_options (void)
 	}
 	#else
 	#endif
-		fprintf(stderr, "using m4 from: %s\n", m4);
+		// fprintf(stderr, "using m4 from: %s\n", m4);
     filter_create_ext(output_chain, m4, "-P", 0);
     filter_create_int(output_chain, filter_fix_linedirs, NULL);
 
