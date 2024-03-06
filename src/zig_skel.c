@@ -29,6 +29,7 @@ const char *skel[] = {
   "const std = @import(\"std\");",
   "const Self = @This();",
   "const YYLexer = @This();",
+  "const zlexison = @import(\"zlexison.zig\");",
   "%endif",
   "",
   "pub const YY_NULL = 0;",

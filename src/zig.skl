@@ -55,6 +55,7 @@ m4_ifdef( [[M4_YY_REENTRANT]],  [[m4_define([[M4_YY_HAS_START_STACK_VARS]])]])
 const std = @import("std");
 const Self = @This();
 const YYLexer = @This();
+const zlexison = @import("zlexison.zig");
 %endif
 
 pub const YY_NULL = 0;
