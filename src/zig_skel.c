@@ -1448,7 +1448,6 @@ const char *skel[] = {
   "m4_ifdef( [[M4_YY_NO_SET_LVAL]],,",
   "[[",
   "pub inline fn yyset_lval(yylval_param: YYSTYPE, yyg: *yyguts_t) void {",
-  "    yyg.yylval_r.deinit(yyg.lexer_.allocator);",
   "    yyg.yylval_r.* = yylval_param;",
   "}",
   "]])",
