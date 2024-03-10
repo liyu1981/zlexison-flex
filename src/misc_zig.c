@@ -49,6 +49,13 @@
 #define CMD_IF_NOT_BISON_BRIDGE  "%if-not-bison-bridge"
 #define CMD_ENDIF            "%endif"
 
+// https://stackoverflow.com/questions/26030928/why-is-isascii-deprecated
+#ifndef isascii
+static int isascii(int ch) { 
+	return ch >= 0 && ch < 128; 
+}
+#endif
+
 /* we allow the skeleton to push and pop. */
 struct sko_state {
     bool dc; /**< do_copy */
@@ -143,8 +150,14 @@ void   *allocate_array (int size, size_t element_size)
 {
 	void *mem;
 #if HAVE_REALLOCARRAY
+#ifdef reallocarray
 	/* reallocarray has built-in overflow detection */
 	mem = reallocarray(NULL, (size_t) size, element_size);
+#else
+	size_t num_bytes = (size_t) size * element_size;
+	mem = (size && SIZE_MAX / (size_t) size < element_size) ? NULL :
+		malloc(num_bytes);
+#endif
 #else
 	size_t num_bytes = (size_t) size * element_size;
 	mem = (size && SIZE_MAX / (size_t) size < element_size) ? NULL :
@@ -660,8 +673,14 @@ void   *reallocate_array (void *array, int size, size_t element_size)
 {
 	void *new_array;
 #if HAVE_REALLOCARRAY
+#ifdef reallocarray
 	/* reallocarray has built-in overflow detection */
 	new_array = reallocarray(array, (size_t) size, element_size);
+#else
+	size_t num_bytes = (size_t) size * element_size;
+	new_array = (size && SIZE_MAX / (size_t) size < element_size) ? NULL :
+		realloc(array, num_bytes);
+#endif
 #else
 	size_t num_bytes = (size_t) size * element_size;
 	new_array = (size && SIZE_MAX / (size_t) size < element_size) ? NULL :

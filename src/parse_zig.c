@@ -64,6 +64,12 @@
 #define YYPULL 1
 
 
+// https://stackoverflow.com/questions/26030928/why-is-isascii-deprecated
+#ifndef isascii
+static int isascii(int ch) { 
+	return ch >= 0 && ch < 128; 
+}
+#endif
 
 
 /* First part of user prologue.  */

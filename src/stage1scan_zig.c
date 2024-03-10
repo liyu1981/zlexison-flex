@@ -14,6 +14,13 @@
 #define FLEX_BETA
 #endif
 
+// for fileno, https://pubs.opengroup.org/onlinepubs/009604599/functions/fileno.html
+#ifdef __STDC_ALLOC_LIB__
+#define __STDC_WANT_LIB_EXT2__ 1
+#else
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 /* First, we deal with  platform-specific or compiler-specific issues. */
 
 /* begin standard C headers. */
