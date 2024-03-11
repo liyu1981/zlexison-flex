@@ -66,6 +66,15 @@
 #include "flexdef.h"
 #include "tables.h"
 
+// https://stackoverflow.com/questions/26030928/why-is-isascii-deprecated
+#ifdef __linux__
+#ifndef isascii
+static int isascii(int ch) {
+	return ch >= 0 && ch < 128;
+}
+#endif
+#endif
+
 int pat, scnum, eps, headcnt, trailcnt, lastchar, i, rulelen;
 int trlcontxt, xcluflg, currccl, cclsorted, varlength, variable_trail_rule;
 
@@ -294,7 +303,7 @@ flexrule	:  '^' rule
 			{
 			if ( scon_stk_ptr > 0 )
 				build_eof_action();
-	
+
 			else
 				{
 				/* This EOF applies to all start conditions
@@ -425,7 +434,7 @@ rule		:  re2 re
 					num_rules | YY_TRAILING_HEAD_MASK );
 				variable_trail_rule = true;
 				}
-			
+
 			else
 				trailcnt = rulelen;
 
@@ -777,7 +786,7 @@ fullccl:
     |   braceccl
     ;
 
-braceccl: 
+braceccl:
 
             '[' ccl ']' { $$ = $2; }
 
@@ -835,7 +844,7 @@ ccl		:  ccl CHAR '-' CHAR
                 if (sf_case_ins() && has_case($2) && has_case($4)){
                     $2 = reverse_case ($2);
                     $4 = reverse_case ($4);
-                    
+
                     for ( i = $2; i <= $4; ++i )
                         ccladd( $1, i );
 
@@ -881,14 +890,14 @@ ccl		:  ccl CHAR '-' CHAR
 			}
 		;
 
-ccl_expr:	   
+ccl_expr:
            CCE_ALNUM	{ CCL_EXPR(isalnum); }
 		|  CCE_ALPHA	{ CCL_EXPR(isalpha); }
 		|  CCE_BLANK	{ CCL_EXPR(IS_BLANK); }
 		|  CCE_CNTRL	{ CCL_EXPR(iscntrl); }
 		|  CCE_DIGIT	{ CCL_EXPR(isdigit); }
 		|  CCE_GRAPH	{ CCL_EXPR(isgraph); }
-		|  CCE_LOWER	{ 
+		|  CCE_LOWER	{
                           CCL_EXPR(islower);
                           if (sf_case_ins())
                               CCL_EXPR(isupper);
@@ -913,7 +922,7 @@ ccl_expr:
 		|  CCE_NEG_PUNCT	{ CCL_NEG_EXPR(ispunct); }
 		|  CCE_NEG_SPACE	{ CCL_NEG_EXPR(isspace); }
 		|  CCE_NEG_XDIGIT	{ CCL_NEG_EXPR(isxdigit); }
-		|  CCE_NEG_LOWER	{ 
+		|  CCE_NEG_LOWER	{
 				if ( sf_case_ins() )
 					lwarn(_("[:^lower:] is ambiguous in case insensitive scanner"));
 				else
@@ -926,7 +935,7 @@ ccl_expr:
 					CCL_NEG_EXPR(isupper);
 				}
 		;
-		
+
 string		:  string CHAR
 			{
 			if ( $2 == nlch )

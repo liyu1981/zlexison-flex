@@ -50,10 +50,12 @@
 #define CMD_ENDIF            "%endif"
 
 // https://stackoverflow.com/questions/26030928/why-is-isascii-deprecated
+#ifdef __linux__
 #ifndef isascii
-static int isascii(int ch) { 
-	return ch >= 0 && ch < 128; 
+static int isascii(int ch) {
+	return ch >= 0 && ch < 128;
 }
+#endif
 #endif
 
 /* we allow the skeleton to push and pop. */

@@ -65,12 +65,13 @@
 
 
 // https://stackoverflow.com/questions/26030928/why-is-isascii-deprecated
+#ifdef __linux__
 #ifndef isascii
-static int isascii(int ch) { 
-	return ch >= 0 && ch < 128; 
+static int isascii(int ch) {
+	return ch >= 0 && ch < 128;
 }
 #endif
-
+#endif
 
 /* First part of user prologue.  */
 #line 34 "parse.y"
