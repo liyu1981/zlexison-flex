@@ -127,15 +127,24 @@ pub inline fn YY_SC_TO_UI(comptime T:type, c: T) u8 {
 }
 
 /// util for calculate c pointer distance.
+inline fn ptrDistance(comptime T: type, p1: anytype, p2: anytype) usize {
+    return (@intFromPtr(p2) - @intFromPtr(p1)) / @sizeOf(T);
+}
+
 inline fn cPtrDistance(comptime T: type, p1: [*c]T, p2: [*c]T) usize {
     return (@intFromPtr(p2) - @intFromPtr(p1)) / @sizeOf(T);
 }
 
-inline fn createZero(allocator: std.mem.Allocator, comptime T: type) !*T {
-    var p = try allocator.create(T);
-    _ = &p;
-    p.* = std.mem.zeroInit(T, p.*);
-    return p;
+inline fn ptrLessThan(p1: anytype, p2: anytype) bool {
+    return @intFromPtr(p1) < @intFromPtr(p2);
+}
+
+inline fn ptrLessEqlThan(p1: anytype, p2: anytype) bool {
+    return @intFromPtr(p1) <= @intFromPtr(p2);
+}
+
+inline fn ptrEql(p1: anytype, p2: anytype) bool {
+    return @intFromPtr(p1) == @intFromPtr(p2);
 }
 
 %# Declare yyguts variable
@@ -212,10 +221,10 @@ pub inline fn YY_LESS_LINENO(n: usize, yyg: *yyguts_t) void {
     }
 }
 
-pub fn YY_LINENO_REWIND_TO(dst: [*c]u8, yyg: *yyguts_t) void {
-    var p: [*c]u8 = yyg.yy_cp - 1;
-    while (p >= dst) : (p -= 1) {
-        if (*p == '\n')
+pub fn YY_LINENO_REWIND_TO(dst: [*]u8, yyg: *yyguts_t) void {
+    var p = yyg.yy_cp - 1;
+    while (ptrLessEqlThan(dst, p)) : (p -= 1) {
+        if (p[0] == '\n')
             yyg.yylineno_r -= 1;
     }
 }
@@ -243,8 +252,10 @@ pub inline fn unput(c: u8, yyg: *yyguts_t) void {
 pub const yy_buffer_state = struct {
     yy_input_file: std.fs.File =undefined,
 
-    yy_ch_buf: [*c]u8 = 0, // input buffer
-    yy_buf_pos: [*c]u8 = 0, // current position in input buffer
+    yy_ch_arr: []u8 = undefined,
+    yy_ch_buf: [*]u8 = undefined, // input buffer
+    yy_buf_arr: []u8 = undefined,
+    yy_buf_pos: [*]u8 = undefined, // current position in input buffer
 
     // Size of input buffer in bytes, not including room for EOB characters.
 	yy_buf_size: usize = 0,
@@ -334,13 +345,13 @@ pub inline fn YY_AT_BOL_AS(comptime T: type, yyg: *yyguts_t) T {
 
 /// Done after the current pattern has been matched and before the
 /// corresponding action - sets up yytext.
-pub fn YY_DO_BEFORE_ACTION(yy_cp_: *[*c]u8, yy_bp_: *[*c]u8, yyg: *yyguts_t) void {
-    const yy_cp: [*c]u8 = yy_cp_.*;
-    const yy_bp: [*c]u8 = yy_bp_.*;
+pub fn YY_DO_BEFORE_ACTION(yy_cp_: *[*]u8, yy_bp_: *[*]u8, yyg: *yyguts_t) void {
+    const yy_cp = yy_cp_.*;
+    const yy_bp = yy_bp_.*;
 	yyg.yytext_r = yy_bp;
 %% [2.0] code to fiddle yytext and yyleng for yymore() goes here
-	yyg.yy_hold_char = yy_cp.*;
-	yy_cp_.*.* = 0;
+    yyg.yy_hold_char = yy_cp[0];
+    yy_cp_.*[0] = 0;
 %% [3.0] code to copy yytext_ptr to yytext[] goes here, if %array
 	yyg.yy_c_buf_p = yy_cp;
 }
@@ -353,28 +364,35 @@ M4_YY_SC_DEFS
 
 /// Holds the entire state of the reentrant scanner.
 pub const yyguts_t = struct {
+    pub const OutType = union(enum) {
+        buf: *std.ArrayList(u8),
+        file: std.fs.File,
+    };
+
     lexer_: *Self = undefined,
 
     // User-defined.
-    yyextra_r: YY_EXTRA_TYPE,
+    yyextra_r: YY_EXTRA_TYPE = undefined,
 
     yyin_r: std.fs.File = undefined,
-    yyout_r: std.fs.File = undefined,
+    yyout_r: OutType = undefined,
     yy_buffer_stack_top: usize = 0, // *< index of top of stack.
     yy_buffer_stack_max: usize = 0, // *< capacity of stack.
-    yy_buffer_stack: [*c]?*yy_buffer_state = 0, // /**< Stack as an array. */
+    yy_buffer_stack_arr: []*allowzero yy_buffer_state = undefined,
+    yy_buffer_stack: [*]allowzero *allowzero yy_buffer_state = @ptrFromInt(0), // /**< Stack as an array. */
     yy_hold_char: u8 = undefined,
     yy_n_chars: usize = 0,
     yyleng_r: usize = 0,
-    yy_c_buf_p: [*c]u8 = 0,
+    yy_c_buf_p: [*]allowzero u8 = @ptrFromInt(0),
     yy_init: bool = undefined,
     yy_start: usize = 0,
     yy_did_buffer_switch_on_eof: bool = undefined,
     yy_start_stack_ptr: usize = 0,
     yy_start_stack_depth: usize = 0,
-    yy_start_stack: [*c]usize = 0,
+    yy_start_stack_arr: []usize = undefined,
+    yy_start_stack: [*]allowzero usize = @ptrFromInt(0),
     yy_last_accepting_state: usize = 0,
-    yy_last_accepting_cpos: [*c]u8 = 0,
+    yy_last_accepting_cpos: [*]allowzero u8 = @ptrFromInt(0),
 
     yylineno_r: usize = 0,
     yycolumn_r: usize = 0,
@@ -383,16 +401,16 @@ pub const yyguts_t = struct {
     m4_ifdef( [[M4_YY_USES_REJECT]],
     [[
     yy_state_arr: []usize = undefined,
-    yy_state_buf: [*c]usize = 0,
-    yy_state_ptr: [*c]usize = 0,
-    yy_full_match: [*c]u8 = 0,
+    yy_state_buf: [*]allowzero usize = @ptrFromInt(0),
+    yy_state_ptr: [*]allowzero usize = @ptrFromInt(0),
+    yy_full_match: [*]allowzero u8 = @ptrFromInt(0),
     yy_lp: usize = 0,
 
     // These are only needed for trailing context rules,
     // but there's no conditional variable for that yet.
     yy_looking_for_trail_begin: c_int = undefined,
     yy_full_lp: c_int = undefined,
-    yy_full_state: [*c]c_int = 0,
+    yy_full_state: [*]allowzero c_int = @ptrFromInt(0),
     ]])
 
     m4_ifdef( [[M4_YY_TEXT_IS_ARRAY]],
@@ -400,7 +418,7 @@ pub const yyguts_t = struct {
     @compileError("no support for YY_TEXT_IS_ARRAY");
     ]],
     [[
-    yytext_r: [*c]u8 = 0,
+    yytext_r: [*]u8 = undefined,
     yy_more_flag: bool = undefined,
     yy_more_len: usize = undefined,
     ]])
@@ -433,21 +451,31 @@ pub const yyguts_t = struct {
 
 /// Copy whatever the last rule matched to the standard output.
 pub fn ECHO(yyg: *yyguts_t) !void {
-    try yyg.yyout_r.writer().print("{s}", .{yyg.yytext_r[0..yyg.yyleng_r]});
+    switch (yyg.yyout_r) {
+        .buf => |buf| {
+            try buf.writer().print("{s}", .{yyg.yytext_r[0..yyg.yyleng_r]});
+        },
+        .file => |file| {
+            try file.writer().print("{s}", .{yyg.yytext_r[0..yyg.yyleng_r]});
+        },
+    }
 }
 
-// TODO:
 /// Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
 /// is returned in "result".
 ///
 pub fn YY_INPUT(buf: [*c]u8, result: *usize, max_size: usize, yyg: *yyguts_t) !void {
 %% [5.0] fread()/read() definition of YY_INPUT goes here unless we're doing C++ \
 
-// TODO: will this work?
-// pub fn yyterminate(yyg: *yyguts_t) !void {
-//    _ = yyg;
-//    return error.YYTerminate;
-// }
+pub fn yyterminate(yyg: *yyguts_t) !void {
+    _ = yyg;
+    @compileError(
+        \\to use yyterminate in zig, just do:
+        \\  return YY_TERMINATED;
+        \\in user action code,
+        \\or take look at tests/zlex/cat/cat.l for example
+    );
+}
 
 /// Number of entries by which start-condition stack grows.
 pub const YY_START_STACK_INCR = 25;
@@ -481,8 +509,8 @@ m4_ifdef( [[<M4_YY_BISON_LLOC>]],
 
 /// The main scanner function which does all the work.
 pub fn yylex M4_YY_LEX_PROTO !usize {
-    var yy_cp: [*c]u8 = 0;
-    var yy_bp: [*c]u8 = 0;
+    var yy_cp: [*]allowzero u8 = @ptrFromInt(0);
+    var yy_bp: [*]allowzero u8 = @ptrFromInt(0);
 	var yy_act: usize = 0;
     var yyg = this.yyg;
 
@@ -524,8 +552,9 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
         // m4_ifdef( [[M4_YY_USES_REJECT]],
         // [[
         // Create the reject buffer large enough to save one state per allowed character.
-        if (yyg.yy_state_buf == null) {
-            yyg.yy_state_buf = (try this.allocator.alloc(usize, YY_STATE_BUF_SIZE)).ptr;
+        if (@intFromPtr(yyg.yy_state_buf) == 0) {
+            yyg.yy_state_arr = try this.allocator.alloc(usize, YY_STATE_BUF_SIZE);
+            yyg.yy_state_buf = yyg.yy_state_arr.ptr;
         }
         // ]])
 
@@ -533,16 +562,10 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
             yyg.yy_start = 1; // first start state
         }
 
-        if (yyg.yy_buffer_stack == null or yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] == null) {
+        if (@intFromPtr(yyg.yy_buffer_stack) == 0 or @intFromPtr(yyg.yy_buffer_stack[yyg.yy_buffer_stack_top]) == 0) {
             try yyensure_buffer_stack(yyg);
-            const nb = try yy_create_buffer(yyg.yyin_r, YY_BUF_SIZE, yyg);
-            yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = nb;
-        }
-
-        if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] == null) {
-		    try yyensure_buffer_stack(yyg);
             yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = try yy_create_buffer(yyg.yyin_r, YY_BUF_SIZE, yyg);
-		}
+        }
 
 		yy_load_buffer_state(yyg);
 	}
@@ -558,7 +581,7 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
             yy_cp = YY_G(yy_c_buf_p);
 
             // /* Support of yytext. */
-            yy_cp.* = YY_G(yy_hold_char);
+            yy_cp[0] = YY_G(yy_hold_char);
 
             // /* yy_bp points to the position in yy_ch_buf of the start of
             // * the current run.
@@ -576,7 +599,7 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
             // code to find the action number
 %% [10.0] code to find the action number goes here
 
-            YY_DO_BEFORE_ACTION(&yy_cp, &yy_bp, this.yyg);
+            YY_DO_BEFORE_ACTION(@ptrCast(&yy_cp), @ptrCast(&yy_bp), this.yyg);
 
 %% [11.0] code for yylineno update goes here
 
@@ -594,9 +617,9 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                 const yy_amount_of_matched_text = cPtrDistance(u8, yyg.yytext_r, yy_cp) - 1;
 
                 // Undo the effects of YY_DO_BEFORE_ACTION.
-                yy_cp.* = YY_G(yy_hold_char);
+                yy_cp[0] = YY_G(yy_hold_char);
 
-                if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_buffer_status == yy_buffer_state.YY_BUFFER_NEW) {
+                if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_buffer_status == yy_buffer_state.YY_BUFFER_NEW) {
                     // We're scanning a new file or input source.  It's
                     // possible that this happened because the user
                     // just pointed yyin at a new source and called
@@ -606,9 +629,9 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                     // this is the first action (other than possibly a
                     // back-up) that will match for the new input source.
                     //
-                    yyg.yy_n_chars = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_n_chars;
-                    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_input_file = yyg.yyin_r;
-                    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_buffer_status = yy_buffer_state.YY_BUFFER_NORMAL;
+                    yyg.yy_n_chars = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_n_chars;
+                    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_input_file = yyg.yyin_r;
+                    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_buffer_status = yy_buffer_state.YY_BUFFER_NORMAL;
                 }
 
                 // Note that here we test for yy_c_buf_p "<=" to the position
@@ -618,7 +641,7 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                 // end-of-buffer state).  Contrast this with the test
                 // in input().
                 //
-                if (yyg.yy_c_buf_p <= yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_ch_buf[yyg.yy_n_chars]) {
+                if (ptrLessEqlThan(yyg.yy_c_buf_p, yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_ch_buf + yyg.yy_n_chars)) {
                     // This was really a NUL.
                     var yy_next_state: usize = undefined;
 
@@ -645,12 +668,10 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                         yy_cp = YY_G(yy_c_buf_p);
                         yy_current_state = yy_next_state;
 
-                        // break :yy_match;
                         loop_control = LOOP_START_YY_MATCH;
                         continue;
                     } else {
 %% [14.0] code to do back-up for compressed tables and set up yy_cp goes here
-                        // break :yy_find_action;
                         loop_control = LOOP_START_YY_FIND_ACTION;
                         continue;
                     }
@@ -669,7 +690,6 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
                             yyg.yy_c_buf_p = yyg.yytext_r + yyg.yy_more_len;
 
                             yy_act = YY_STATE_EOF(YY_START(yyg));
-                            // break :do_action;
                             loop_control = LOOP_START_YY_ACT;
                             continue;
                         } else {
@@ -694,7 +714,7 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
 
                     EOB_ACT_LAST_MATCH => {
                         yyg.yy_c_buf_p =
-                            &(yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_ch_buf[yyg.yy_n_chars]);
+                            @ptrCast(yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_ch_buf + yyg.yy_n_chars);
 
                         yy_current_state = yy_get_previous_state(yyg);
 
@@ -729,13 +749,13 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
 /// 	EOB_ACT_END_OF_FILE - end of file
 ///
 pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
-    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?;
+    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	var dest = yy_current_buffer.yy_ch_buf;
 	var source = yyg.yytext_r;
 	var number_to_move: usize = undefined;
 	var ret_val: usize = undefined;
 
-    if (yyg.yy_c_buf_p > &(yy_current_buffer.yy_ch_buf[yyg.yy_n_chars + 1])) {
+    if (ptrLessThan(yy_current_buffer.yy_ch_buf + yyg.yy_n_chars + 1, yyg.yy_c_buf_p)) {
 		yy_fatal_error("fatal flex scanner internal error--end of buffer missed");
     }
 
@@ -760,7 +780,7 @@ pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
 	number_to_move = cPtrDistance(u8, yyg.yytext_r, yyg.yy_c_buf_p) - 1;
 
     for (0..number_to_move) |_| {
-        dest.* = source.*;
+        dest[0] = source[0];
         dest += 1;
         source += 1;
     }
@@ -787,7 +807,7 @@ pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
 		if (num_to_read > YY_READ_BUF_SIZE) num_to_read = YY_READ_BUF_SIZE;
 
 		// Read in more data.
-		try YY_INPUT(yy_current_buffer.yy_ch_buf[number_to_move], &yyg.yy_n_chars, num_to_read, yyg);
+        try YY_INPUT(yy_current_buffer.yy_ch_buf + number_to_move, &yyg.yy_n_chars, num_to_read, yyg);
 
 		yy_current_buffer.yy_n_chars = yyg.yy_n_chars;
 	}
@@ -806,7 +826,7 @@ pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
 	if ((yyg.yy_n_chars + number_to_move) > yy_current_buffer.yy_buf_size) {
 		// Extend the array by 50%, plus the number we really need.
 		const new_size: usize = yyg.yy_n_chars + number_to_move + (yyg.yy_n_chars >> 1);
-        yy_current_buffer.yy_ch_buf = (try yyg.lexer_.allocator.realloc(yy_current_buffer.yy_ch_buf[0..yyg.yy_n_chars], new_size)).ptr;
+        yy_current_buffer.yy_ch_arr = try yyg.lexer_.allocator.realloc(yy_current_buffer.yy_ch_arr, new_size);
 		// - 2 to take care of EOB's
 		yy_current_buffer.yy_buf_size = new_size - 2;
 	}
@@ -815,7 +835,7 @@ pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
 	yy_current_buffer.yy_ch_buf[yyg.yy_n_chars] = YY_END_OF_BUFFER_CHAR;
 	yy_current_buffer.yy_ch_buf[yyg.yy_n_chars + 1] = YY_END_OF_BUFFER_CHAR;
 
-	yyg.yytext_r = &(yy_current_buffer.yy_ch_buf[0]);
+    yyg.yytext_r = @ptrCast(yy_current_buffer.yy_ch_buf);
 
 	return ret_val;
 }
@@ -823,13 +843,13 @@ pub fn yy_get_next_buffer(yyg: *yyguts_t) !usize {
 /// yy_get_previous_state - get the state just before the EOB char was reached
 pub fn yy_get_previous_state(yyg: *yyguts_t) usize {
 	var yy_current_state: usize = 0;
-	var yy_cp: [*c]u8 = 0;
+	var yy_cp: [*]u8 = undefined;
     const yy_current_state_ = &yy_current_state;
 
 %% [15.0] code to get the start state into yy_current_state goes here
 
     yy_cp = yyg.yytext_r + yyg.yy_more_len;
-	while ( yy_cp < yyg.yy_c_buf_p) : ( yy_cp = yy_cp + 1 ) {
+	while ( ptrLessThan(yy_cp, yyg.yy_c_buf_p)) : ( yy_cp = yy_cp + 1 ) {
 %% [16.0] code to find the next state goes here
 	}
 
@@ -864,8 +884,8 @@ pub fn yyunput(c: u8, yy_bp: [*c]u8, yyg: *yyguts_t) void {
         // need to shift things up to make room
 		// +2 for EOB chars.
 		const number_to_move: usize = yyg.yy_n_chars + 2;
-		var dest = &yy_current_buffer.yy_ch_buf[yy_current_buffer.yy_buf_size + 2];
-		var source = &yy_current_buffer.yy_ch_buf[number_to_move];
+        var dest = yy_current_buffer.yy_ch_buf + (yy_current_buffer.yy_buf_size + 2);
+        var source = yy_current_buffer.yy_ch_buf + number_to_move;
 
 		while (source > yy_current_buffer.yy_ch_buf) {
             dest -= 1;
@@ -900,7 +920,7 @@ pub fn yyunput(c: u8, yy_bp: [*c]u8, yyg: *yyguts_t) void {
 ]])
 
 pub fn input(yyg: *yyguts_t) !u8 {
-    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	var c: u8 = undefined;
 
 	yyg.yy_c_buf_p.* = yyg.yy_hold_char;
@@ -910,7 +930,7 @@ pub fn input(yyg: *yyguts_t) !u8 {
 		// If this occurs *before* the EOB characters, then it's a
 		// valid NUL; if not, then we've hit the end of the buffer.
 		//
-		if (yyg.yy_c_buf_p < &yy_current_buffer.?.yy_ch_buf[yyg.yy_n_chars]) {
+        if (ptrLessThan(yyg.yy_c_buf_p, yy_current_buffer.?.yy_ch_buf + yyg.yy_n_chars)) {
 			// This was really a NUL.
 			yyg.yy_c_buf_p.* = 0;
 		} else {
@@ -965,12 +985,12 @@ pub fn input(yyg: *yyguts_t) !u8 {
 ///
 pub fn yyrestart(input_file: std.fs.File, yyg: *yyguts_t) !void {
 var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-    if (yy_current_buffer == null) {
+    if (@intFromPtr(yy_current_buffer) == 0) {
         try yyensure_buffer_stack(yyg);
         yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = try yy_create_buffer(yyg.yyin_r, YY_BUF_SIZE, yyg);
         yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
     }
-    yy_init_buffer(yy_current_buffer.?, input_file, yyg);
+    yy_init_buffer(@ptrCast(yy_current_buffer), input_file, yyg);
     yy_load_buffer_state(yyg);
 }
 
@@ -983,12 +1003,12 @@ pub fn yy_switch_to_buffer(new_buffer: *yy_buffer_state, yyg: *yyguts_t) !void {
 }
 
 pub fn yy_load_buffer_state(yyg: *yyguts_t) void {
-    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?;
+    const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	yyg.yy_n_chars = yy_current_buffer.yy_n_chars;
 	yyg.yytext_r = yy_current_buffer.yy_buf_pos;
     yyg.yy_c_buf_p = yy_current_buffer.yy_buf_pos;
 	yyg.yyin_r = yy_current_buffer.yy_input_file;
-	yyg.yy_hold_char = yyg.yy_c_buf_p.*;
+	yyg.yy_hold_char = yyg.yy_c_buf_p[0];
 }
 
 /// Allocate and initialize an input buffer state.
@@ -997,13 +1017,15 @@ pub fn yy_load_buffer_state(yyg: *yyguts_t) void {
 /// @return the allocated buffer state.
 ///
 pub fn yy_create_buffer(file: std.fs.File, size: usize, yyg: *yyguts_t) !*yy_buffer_state {
-    var b: *yy_buffer_state = try createZero(yyg.lexer_.allocator, yy_buffer_state);
+    var b = try yyg.lexer_.allocator.create(yy_buffer_state);
+    b.* = yy_buffer_state{};
     b.yy_buf_size = size;
 
 	// yy_ch_buf has to be 2 characters longer than the size given because
 	// we need to put in 2 end-of-buffer characters.
 	//
-    b.yy_ch_buf = (try yyg.lexer_.allocator.alloc(u8, b.yy_buf_size + 2)).ptr;
+    b.yy_ch_arr = try yyg.lexer_.allocator.alloc(u8, b.yy_buf_size + 2);
+    b.yy_ch_buf = b.yy_ch_arr.ptr;
 	b.yy_is_our_buffer = true;
 	yy_init_buffer( b, file, yyg);
 
@@ -1016,11 +1038,11 @@ pub fn yy_create_buffer(file: std.fs.File, size: usize, yyg: *yyguts_t) !*yy_buf
 pub fn yy_delete_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
     var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 
-	if (b == yy_current_buffer) // Not sure if we should pop here.
-		yy_current_buffer = null;
+    if (ptrEql(b, yy_current_buffer)) // Not sure if we should pop here.
+        yy_current_buffer = @ptrFromInt(0);
 
     if (b.yy_is_our_buffer) {
-        yyg.lexer_.allocator.free(b.yy_ch_buf[0..b.yy_n_chars + 2]);
+        yyg.lexer_.allocator.free(b.yy_ch_arr);
     }
 
     yyg.lexer_.allocator.destroy(b);
@@ -1041,7 +1063,7 @@ pub fn yy_init_buffer(b: *yy_buffer_state, file: std.fs.File, yyg: *yyguts_t) vo
     // called from yyrestart() or through yy_get_next_buffer.
     // In that case, we don't want to reset the lineno or column.
     //
-    if (b != yy_current_buffer) {
+    if (ptrEql(b, yy_current_buffer)) {
         b.yy_bs_lineno = 1;
         b.yy_bs_column = 0;
     }
@@ -1056,7 +1078,7 @@ pub fn yy_init_buffer(b: *yy_buffer_state, file: std.fs.File, yyg: *yyguts_t) vo
     b.yy_is_interactive = false;
     ]],
     [[
-    b.yy_is_interactive = file.handle > 0;
+    b.yy_is_interactive = std.posix.isatty(file.handle);
     ]])
     ]])
 }
@@ -1078,12 +1100,12 @@ pub fn yy_flush_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
 	b.yy_ch_buf[0] = YY_END_OF_BUFFER_CHAR;
 	b.yy_ch_buf[1] = YY_END_OF_BUFFER_CHAR;
 
-	b.yy_buf_pos = &b.yy_ch_buf[0];
+    b.yy_buf_pos = b.yy_ch_buf;
 
 	b.yy_at_bol = true;
 	b.yy_buffer_status = yy_buffer_state.YY_BUFFER_NEW;
 
-	if (b == yy_current_buffer) yy_load_buffer_state(yyg);
+    if (ptrEql(b, yy_current_buffer)) yy_load_buffer_state(yyg);
 }
 
 /// Pushes the new state onto the stack. The new state becomes
@@ -1092,9 +1114,6 @@ pub fn yy_flush_buffer(b: *yy_buffer_state, yyg: *yyguts_t) void {
 /// @param new_buffer The new state.
 ///
 pub fn yypush_buffer_state(new_buffer: *yy_buffer_state, yyg: *yyguts_t) !void {
-	// if (new_buffer == NULL)
-	//	return;
-
 	try yyensure_buffer_stack(yyg);
 
     var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
@@ -1122,22 +1141,22 @@ pub fn yypush_buffer_state(new_buffer: *yy_buffer_state, yyg: *yyguts_t) !void {
 /// The next element becomes the new top.
 ///
 pub fn yypop_buffer_state(yyg: *yyguts_t) void {
-    if (yyg.yy_buffer_stack == null) {
+    if (@intFromPtr(yyg.yy_buffer_stack) == 0) {
         return;
     }
 
     const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-    if (yy_current_buffer == null) {
+    if (@intFromPtr(yy_current_buffer) == 0) {
         return;
     }
 
-    yy_delete_buffer(yy_current_buffer.?, yyg);
-    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = null;
+    yy_delete_buffer(@ptrCast(yy_current_buffer), yyg);
+    yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = @ptrFromInt(0);
     if (yyg.yy_buffer_stack_top > 0) {
         yyg.yy_buffer_stack_top -= 1;
     }
 
-    if (yy_current_buffer != null) {
+    if (@intFromPtr(yy_current_buffer) != 0) {
         yy_load_buffer_state(yyg);
         yyg.yy_did_buffer_switch_on_eof = true;
     }
@@ -1149,14 +1168,15 @@ pub fn yypop_buffer_state(yyg: *yyguts_t) void {
 pub fn yyensure_buffer_stack(yyg: *yyguts_t) !void {
 	var num_to_alloc: usize = undefined;
 
-	if (YY_G(yy_buffer_stack) == null) {
+    if (@intFromPtr(yyg.yy_buffer_stack) == 0) {
 		// First allocation is just for 2 elements, since we don't know if this
 		// scanner will even need a stack. We use 2 instead of 1 to avoid an
 		// immediate realloc on the next call.
         //
         num_to_alloc = 1; // After all that talk, this was set to 1 anyways...
-        yyg.yy_buffer_stack = (try yyg.lexer_.allocator.alloc(?*yy_buffer_state, num_to_alloc)).ptr;
-        @memset(yyg.yy_buffer_stack[0..num_to_alloc], null);
+        yyg.yy_buffer_stack_arr = try yyg.lexer_.allocator.alloc(*allowzero yy_buffer_state, num_to_alloc);
+        yyg.yy_buffer_stack = yyg.yy_buffer_stack_arr.ptr;
+        @memset(yyg.yy_buffer_stack[0..num_to_alloc], @ptrFromInt(0));
 
 		yyg.yy_buffer_stack_max = num_to_alloc;
 		yyg.yy_buffer_stack_top = 0;
@@ -1168,11 +1188,11 @@ pub fn yyensure_buffer_stack(yyg: *yyguts_t) !void {
 		const grow_size = 8; // arbitrary grow size
 
 		num_to_alloc = yyg.yy_buffer_stack_max + grow_size;
-        yyg.yy_buffer_stack = (try yyg.lexer_.allocator.alloc(?*yy_buffer_state, num_to_alloc)).ptr;
+        yyg.yy_buffer_stack_arr = try yyg.lexer_.allocator.alloc(*allowzero yy_buffer_state, num_to_alloc);
+        yyg.yy_buffer_stack = yyg.yy_buffer_stack_arr.ptr;
 
 		// zero only the new slots.
-        @memset(yyg.yy_buffer_stack[yyg.yy_buffer_stack_max..num_to_alloc], null);
-		// memset(YY_G(yy_buffer_stack) + YY_G(yy_buffer_stack_max), 0, grow_size * sizeof(struct yy_buffer_state*));
+        @memset(yyg.yy_buffer_stack[yyg.yy_buffer_stack_max..num_to_alloc], @ptrFromInt(0));
 		yyg.yy_buffer_stack_max = num_to_alloc;
 	}
 }
@@ -1270,10 +1290,12 @@ pub fn yy_push_state(new_state: usize, yyg: *yyguts_t) !void {
 		yyg.yy_start_stack_depth += YY_START_STACK_INCR;
 		new_size = yyg.yy_start_stack_depth * @sizeOf(usize);
 
-        if (yyg.yy_start_stack == 0) {
-            yyg.yy_start_stack = try yyg.lexer.allocator.alloc(usize, new_size);
+        if (@intFromPtr(yyg.yy_start_stack) == 0) {
+            yyg.yy_start_stack_arr = try yyg.lexer_.allocator.alloc(usize, new_size);
+            yyg.yy_start_stack = yyg.yy_buffer_stack_arr.ptr;
         } else {
-            yyg.yy_start_stack = try yyg.lexer.allocator.realloc(usize, yyg.yy_start_stack, new_size);
+            yyg.yy_buffer_stack_arr = try yyg.lexer_.allocator.realloc(yyg.yy_start_stack_arr, new_size);
+            yyg.yy_start_stack = yyg.yy_buffer_stack_arr.ptr;
         }
 
         yyg.yy_start_stack[yyg.yy_start_stack_ptr] = YY_START(yyg);
@@ -1413,8 +1435,8 @@ pub inline fn yyset_lineno(line_number: usize, yyg: *yyguts_t) void {
     m4_ifdef( [[M4_YY_REENTRANT]],
     [[
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == null)
-           yy_fatal_error("yyset_lineno called with no buffer");
+        if (@intFromPtr(yy_current_buffer) == 0)
+            yy_fatal_error("yyset_lineno called with no buffer");
     ]])
     yyg.yylineno_r = line_number;
 }
@@ -1432,8 +1454,8 @@ pub inline fn yyset_column(column_no: usize, yyg: *yyguts_t) void {
     [[
         // column is only valid if an input buffer exists.
         const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-        if (yy_current_buffer == null)
-           yy_fatal_error( "yyset_column called with no buffer");
+        if (@intFromPtr(yy_current_buffer) == 0)
+            yy_fatal_error("yyset_column called with no buffer");
     ]])
     yyg.yycolumn_r = column_no;
 }
@@ -1521,7 +1543,8 @@ pub inline fn yyset_lloc(yylloc_param: YYLTYPE, yyg: *yyguts_t) void {
 /// using our macros.
 ///
 pub fn yylex_init(lexer: *Self) !void {
-    lexer.yyg = try createZero(lexer.allocator, yyguts_t);
+    lexer.yyg = try lexer.allocator.create(yyguts_t);
+    lexer.yyg.* = yyguts_t{};
     lexer.yyg.lexer_ = lexer;
     yy_init_globals(lexer.yyg);
 }
@@ -1536,11 +1559,9 @@ pub const init = yylex_init;
 /// The user defined value in the first argument will be available to yyalloc in
 /// the yyextra field.
 ///
-pub fn yylex_init_extra(allocator: std.mem.Allocator, yy_user_defined: YY_EXTRA_TYPE) !Self {
-    var self = try yylex_init(allocator);
-    _ = &self;
-    yyset_extra(yy_user_defined, self.yyg);
-    return self;
+pub fn yylex_init_extra(lexer: *Self, yy_user_defined: YY_EXTRA_TYPE) !void {
+    try yylex_init(lexer);
+    yyset_extra(yy_user_defined, lexer.yyg);
 }
 
 pub const initExtra = yylex_init_extra;
@@ -1553,14 +1574,14 @@ pub fn yy_init_globals(yyg: *yyguts_t) void {
     // yyg.lexer_
     // yyg.yyextra_r
     yyg.yyin_r = std.io.getStdIn();
-    yyg.yyout_r = std.io.getStdOut();
-    yyg.yy_buffer_stack = 0;
+    yyg.yyout_r = .{ .file = std.io.getStdOut() };
+    yyg.yy_buffer_stack = @ptrFromInt(0);
     yyg.yy_buffer_stack_top = 0;
     yyg.yy_buffer_stack_max = 0;
     // yyg.yy_hold_char
     yyg.yy_n_chars = 0;
     yyg.yyleng_r = 0;
-    yyg.yy_c_buf_p = 0;
+    yyg.yy_c_buf_p = @ptrFromInt(0);
     yyg.yy_init = false;
     yyg.yy_start = 1;
     yyg.yy_did_buffer_switch_on_eof = false;
@@ -1568,10 +1589,10 @@ pub fn yy_init_globals(yyg: *yyguts_t) void {
     [[
     yyg.yy_start_stack_ptr = 0;
     yyg.yy_start_stack_depth = 0;
-    yyg.yy_start_stack = 0;
+    yyg.yy_start_stack = @ptrFromInt(0);
     ]])
     yyg.yy_last_accepting_state = 0;
-    yyg.yy_last_accepting_cpos = 0;
+    yyg.yy_last_accepting_cpos = @ptrFromInt(0);
     m4_ifdef( [[M4_YY_USE_LINENO]],
     [[
     yyg.yylineno_r = 0;
@@ -1580,14 +1601,14 @@ pub fn yy_init_globals(yyg: *yyguts_t) void {
     yyg.yy_flex_debug_r = false;
     m4_ifdef( [[M4_YY_USES_REJECT]],
     [[
-    yyg.yy_state_buf = 0;
-    yyg.yy_state_ptr = 0;
-    yyg.yy_full_match = 0;
+    yyg.yy_state_buf = @ptrFromInt(0);
+    yyg.yy_state_ptr = @ptrFromInt(0);
+    yyg.yy_full_match = @ptrFromInt(0);
     yyg.yy_lp = 0;
     ]])
     yyg.yy_looking_for_trail_begin = 0;
     yyg.yy_full_lp = 0;
-    yyg.yy_full_state = 0;
+    yyg.yy_full_state = @ptrFromInt(0);
     m4_ifdef( [[M4_YY_TEXT_IS_ARRAY]],
     [[
     yyg.yytext_r = 0;
@@ -1609,27 +1630,27 @@ pub fn yylex_destroy(this: *Self) void {
     var yyg = this.yyg;
     var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
     // Pop the buffer stack, destroying each element.
-	while(yy_current_buffer != null) {
-        yy_delete_buffer(yy_current_buffer.?, yyg);
-        yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = null;
-		yypop_buffer_state(yyg);
+    while (@intFromPtr(yy_current_buffer) != 0) {
+        yy_delete_buffer(@ptrCast(yy_current_buffer), yyg);
+        yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = @ptrFromInt(0);
+        yypop_buffer_state(yyg);
         yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-	}
+    }
 
 	// Destroy the stack itself.
-    this.allocator.free(yyg.yy_buffer_stack[0..yyg.yy_buffer_stack_max]);
+    this.allocator.free(yyg.yy_buffer_stack_arr);
 
     m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
     [[
     // Destroy the start condition stack.
-    if (yyg.yy_start_stack != null and yyg.yy_start_stack_depth > 0) {
-        this.allocator.free(yyg.yy_start_stack[0..yyg.yy_start_stack_depth]);
+    if (@intFromPtr(yyg.yy_start_stack) != 0 and yyg.yy_start_stack_depth > 0) {
+        this.allocator.free(yyg.yy_start_stack_arr);
     }
     ]])
 
     m4_ifdef( [[M4_YY_USES_REJECT]],
     [[
-    this.allocator.free(yyg.yy_state_buf[0..YY_STATE_BUF_SIZE]);
+    this.allocator.free(yyg.yy_state_arr);
     ]])
 
     // Reset the globals. This is important in a non-reentrant scanner so the

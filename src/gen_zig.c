@@ -512,7 +512,7 @@ void gen_find_action (void)
 
 	else if (reject) {
 		indent_puts ("YY_G(yy_state_ptr) -= 1;");
-		indent_puts ("yy_current_state = YY_G(yy_state_ptr).*;");
+		indent_puts ("yy_current_state = YY_G(yy_state_ptr)[0];");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
 		if (!variable_trailing_context_rules)
@@ -617,7 +617,7 @@ void gen_find_action (void)
 		 * branching inside a loop.
 		 */
 		indent_puts ("YY_G(yy_state_ptr) -= 1;");
-		indent_puts ("yy_current_state = YY_G(yy_state_ptr).*;");
+		indent_puts ("yy_current_state = YY_G(yy_state_ptr)[0];");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
 		indent_puts ("}");
@@ -773,7 +773,7 @@ void gen_next_match (void)
 	 * gen_NUL_trans().
 	 */
 	char   *char_map = useecs ?
-		"yy_ec[YY_SC_TO_UI(u8, yy_cp.*)] " : "YY_SC_TO_UI(u8, yy_cp.*)";
+		"yy_ec[YY_SC_TO_UI(u8, yy_cp[0])] " : "YY_SC_TO_UI(u8, yy_cp[0])";
 
 	char   *char_map_2 = useecs ?
 		"yy_ec[YY_SC_TO_UI(*++yy_cp)] " : "YY_SC_TO_UI(*++yy_cp)";
@@ -884,25 +884,25 @@ void gen_next_state (int worry_about_NULs)
 	if (worry_about_NULs && !nultrans) {
 		if (useecs)
 			snprintf (char_map, sizeof(char_map),
-					"if(yy_cp.* == 0) yy_ec[YY_SC_TO_UI(u8, yy_cp.*)] else %d",
+					"if(yy_cp[0] == 0) yy_ec[YY_SC_TO_UI(u8, yy_cp[0])] else %d",
 					NUL_ec);
 		else
             snprintf (char_map, sizeof(char_map),
-					"if(yy_cp.* == 0) YY_SC_TO_UI(u8, yy_cp.*) else %d",
+					"if(yy_cp[0] == 0) YY_SC_TO_UI(u8, yy_cp[0]) else %d",
 					NUL_ec);
 	}
 
 	else
 		strcpy (char_map, useecs ?
-			"yy_ec[YY_SC_TO_UI(u8, yy_cp.*)] " :
-			"YY_SC_TO_UI(u8, yy_cp.*)");
+			"yy_ec[YY_SC_TO_UI(u8, yy_cp[0])] " :
+			"YY_SC_TO_UI(u8, yy_cp[0])");
 
 	if (worry_about_NULs && nultrans) {
 		if (!fulltbl && !fullspd)
 			/* Compressed tables back up *before* they match. */
 			gen_backing_up ();
 
-		indent_puts ("if ( *yy_cp )");
+		indent_puts ("if ( yy_cp[0] != 0 )");
 		++indent_level;
 		indent_puts ("{");
 	}
@@ -943,7 +943,7 @@ void gen_next_state (int worry_about_NULs)
 		gen_backing_up ();
 
 	if (reject) {
-		indent_puts ("yyg.yy_state_ptr.* = yy_current_state;");
+		indent_puts ("yyg.yy_state_ptr[0] = yy_current_state;");
 		indent_puts ("yyg.yy_state_ptr += 1;");
 	}
 }
@@ -1014,7 +1014,7 @@ void gen_NUL_trans (void)
 			indent_puts ("if ( ! yy_is_jam )");
 			++indent_level;
 			indent_puts
-				("YY_G(yy_state_ptr).* = yy_current_state_.*;");
+				("YY_G(yy_state_ptr)[0] = yy_current_state_.*;");
 			indent_puts ("YY_G(yy_state_ptr) += 1;");
 			--indent_level;
 		}
@@ -1063,7 +1063,7 @@ void gen_start_state (void)
 			indent_puts
 				("YY_G(yy_state_ptr) = YY_G(yy_state_buf);");
 			indent_puts
-				("YY_G(yy_state_ptr).* = yy_current_state;");
+				("YY_G(yy_state_ptr)[0] = yy_current_state;");
 			indent_puts
 				("YY_G(yy_state_ptr) += 1;");
 			outn ("]])");
@@ -1914,7 +1914,7 @@ void make_tables (void)
 
 		else {
 			outn ("\tconst yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];");
-			outn ("\tif (yy_current_buffer.?.yy_is_interactive) {");
+			outn ("\tif (yy_current_buffer.yy_is_interactive) {");
 			outn ("\t\tvar c: u8 = '*';");
 			outn ("\t\tvar n: usize = 0;");
 			outn ("\t\twhile(n < max_size) : (n += 1) {");
