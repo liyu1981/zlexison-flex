@@ -736,7 +736,7 @@ void gen_next_compressed_state (char *char_map)
 		("while(c1 != yy_current_state)");
 	++indent_level;
 	indent_puts ("{");
-	indent_puts ("yy_current_state_.* = yy_def[yy_current_state];");
+	indent_puts ("yy_current_state = yy_def[yy_current_state];");
 
 	if (usemecs) {
 		/* We've arrange it so that templates are never chained
@@ -761,7 +761,7 @@ void gen_next_compressed_state (char *char_map)
 	--indent_level;
 
 	indent_puts
-		("yy_current_state_.* = yy_nxt[yy_base[yy_current_state] + yy_c];");
+		("yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];");
 }
 
 
@@ -984,7 +984,7 @@ void gen_NUL_trans (void)
 
 	else if (fullspd) {
 		do_indent ();
-		out_dec ("int yy_c = %d;\n", NUL_ec);
+		out_dec ("var yy_c: usize = %d;\n", NUL_ec);
 
 		indent_puts
 			("const struct yy_trans_info *yy_trans_info;\n");
@@ -1003,7 +1003,7 @@ void gen_NUL_trans (void)
 		gen_next_compressed_state (NUL_ec_str);
 
 		do_indent ();
-		out_dec ("yy_is_jam = (yy_current_state_.* == %d);\n",
+		out_dec ("yy_is_jam = (yy_current_state == %d);\n",
 			 jamstate);
 
 		if (reject) {
@@ -1014,7 +1014,7 @@ void gen_NUL_trans (void)
 			indent_puts ("if ( ! yy_is_jam )");
 			++indent_level;
 			indent_puts
-				("YY_G(yy_state_ptr)[0] = yy_current_state_.*;");
+				("YY_G(yy_state_ptr)[0] = yy_current_state;");
 			indent_puts ("YY_G(yy_state_ptr) += 1;");
 			--indent_level;
 		}
@@ -1536,7 +1536,9 @@ void make_tables (void)
 
 	if (yymore_used && !yytext_is_array) {
 		indent_puts("yyg.yytext_r -= yyg.yy_more_len;");
-		indent_puts("yyg.yyleng_r = cPtrDistance(u8, yyg.yytext_r, yy_cp);");
+		indent_puts("// distance of (yyg.yytext_r to yy_cp) can only be negative during EOB switches, not here, so do follow trick to make yyleng_r always positive");
+		indent_puts("const d = ptrDistance(u8, yyg.yytext_r, yy_cp);");
+		indent_puts("yyg.yyleng_r = if (d >= 0) @intCast(d) else 0;");
 	}
 
 	else
@@ -1942,7 +1944,7 @@ void make_tables (void)
 	if (bol_needed) {
 		indent_puts ("if (this.yyg.yyleng_r > 0) {");
 		++indent_level;
-		indent_puts ("this.yyg.yy_buffer_stack[this.yyg.yy_buffer_stack_top].?.yy_at_bol =");
+		indent_puts ("this.yyg.yy_buffer_stack[this.yyg.yy_buffer_stack_top].yy_at_bol =");
 		indent_puts ("\t\t(this.yyg.yytext_r[this.yyg.yyleng_r - 1] == '\\n');");
 		indent_puts ("}");
 		--indent_level;
@@ -1971,7 +1973,7 @@ void make_tables (void)
 		++indent_level;
 		indent_puts ("{");
 		indent_puts
-			("yyg.yy_more_len = cPtrDistance(u8, yyg.yytext_r, yyg.yy_c_buf_p);");
+			("yyg.yy_more_len = @intCast(ptrDistance(u8, yyg.yytext_r, yyg.yy_c_buf_p));");
 		indent_puts ("yyg.yy_more_flag = false;");
 		indent_puts ("}");
 		--indent_level;
@@ -2163,10 +2165,10 @@ void make_tables (void)
 	/* Update BOL and yylineno inside of input(). */
 	if (bol_needed) {
 		indent_puts
-			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol = (c == '\\n');");
+			("yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol = (c == '\\n');");
 		if (do_yylineno) {
 			indent_puts
-				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].?.yy_at_bol) {");
+				("if (yyg.yy_buffer_stack[yyg.yy_buffer_stack_top].yy_at_bol) {");
 			++indent_level;
 			indent_puts ("M4_YY_INCR_LINENO()");
 			--indent_level;

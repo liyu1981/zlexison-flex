@@ -2805,8 +2805,13 @@ void build_eof_action(void)
   			snprintf( action_text, sizeof(action_text), "YY_STATE_EOF(%s)",
 	  			scname[scon_stk[i]] );
       } else {
-		  	snprintf( action_text, sizeof(action_text), ", YY_STATE_EOF(%s)",
-			  	scname[scon_stk[i]] );
+        if (i > 1) {
+          snprintf( action_text, sizeof(action_text), ", YY_STATE_EOF(%s)",
+            scname[scon_stk[i]] );
+        } else {
+          snprintf( action_text, sizeof(action_text), "YY_STATE_EOF(%s)",
+            scname[scon_stk[i]] );
+        }
       }
 			add_action( action_text );
 			}
