@@ -511,7 +511,7 @@ void gen_find_action (void)
 		indent_puts ("yy_act = yy_accept[yy_current_state];");
 
 	else if (reject) {
-		indent_puts ("YY_G(yy_state_ptr) -= 1;");
+		indent_puts ("YY_G(yy_state_ptr) = movePtr(yyg.yy_state_ptr, -1);");
 		indent_puts ("yy_current_state = YY_G(yy_state_ptr)[0];");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
@@ -616,7 +616,7 @@ void gen_find_action (void)
 		 * the beginning, but at the cost of complaints that we're
 		 * branching inside a loop.
 		 */
-		indent_puts ("YY_G(yy_state_ptr) -= 1;");
+		indent_puts ("YY_G(yy_state_ptr) = movePtr(yyg.yy_state_ptr, -1);");
 		indent_puts ("yy_current_state = YY_G(yy_state_ptr)[0];");
 		indent_puts ("YY_G(yy_lp) = yy_accept[yy_current_state];");
 
@@ -884,11 +884,11 @@ void gen_next_state (int worry_about_NULs)
 	if (worry_about_NULs && !nultrans) {
 		if (useecs)
 			snprintf (char_map, sizeof(char_map),
-					"if(yy_cp[0] == 0) yy_ec[YY_SC_TO_UI(u8, yy_cp[0])] else %d",
+					"if(yy_cp[0] != 0) yy_ec[YY_SC_TO_UI(u8, yy_cp[0])] else %d",
 					NUL_ec);
 		else
             snprintf (char_map, sizeof(char_map),
-					"if(yy_cp[0] == 0) YY_SC_TO_UI(u8, yy_cp[0]) else %d",
+					"if(yy_cp[0] != 0) YY_SC_TO_UI(u8, yy_cp[0]) else %d",
 					NUL_ec);
 	}
 
@@ -944,7 +944,7 @@ void gen_next_state (int worry_about_NULs)
 
 	if (reject) {
 		indent_puts ("yyg.yy_state_ptr[0] = yy_current_state;");
-		indent_puts ("yyg.yy_state_ptr += 1;");
+		indent_puts ("yyg.yy_state_ptr = movePtr(yyg.yy_state_ptr, 1);");
 	}
 }
 
@@ -1011,11 +1011,12 @@ void gen_NUL_trans (void)
 			 * actually make.  If we stack it on a jam, then
 			 * the state stack and yy_c_buf_p get out of sync.
 			 */
-			indent_puts ("if ( ! yy_is_jam )");
+			indent_puts ("if ( ! yy_is_jam ) {");
 			++indent_level;
 			indent_puts
 				("YY_G(yy_state_ptr)[0] = yy_current_state;");
 			indent_puts ("YY_G(yy_state_ptr) += 1;");
+			indent_puts ("}");
 			--indent_level;
 		}
 	}
@@ -1065,7 +1066,7 @@ void gen_start_state (void)
 			indent_puts
 				("YY_G(yy_state_ptr)[0] = yy_current_state;");
 			indent_puts
-				("YY_G(yy_state_ptr) += 1;");
+				("YY_G(yy_state_ptr) = movePtr(yyg.yy_state_ptr, 1);");
 			outn ("]])");
 		}
 	}
@@ -1537,7 +1538,7 @@ void make_tables (void)
 	if (yymore_used && !yytext_is_array) {
 		indent_puts("yyg.yytext_r -= yyg.yy_more_len;");
 		indent_puts("// distance of (yyg.yytext_r to yy_cp) can only be negative during EOB switches, not here, so do follow trick to make yyleng_r always positive");
-		indent_puts("const d = ptrDistance(u8, yyg.yytext_r, yy_cp);");
+		indent_puts("const d = ptrDistance(u8, yy_bp, yy_cp);");
 		indent_puts("yyg.yyleng_r = if (d >= 0) @intCast(d) else 0;");
 	}
 
@@ -1802,8 +1803,8 @@ void make_tables (void)
 		outn ("// use REJECT as:");
 		outn ( "//   REJECT(yyg); loop_control = LOOP_START_YY_FIND_RULE; continue;");
 		outn ("// or use <REJECT> in code, generator will replace it");
-		outn("pub fn REJECT(yyg: *yyguts_t, yy_cp_: *[*c]u8) void {");
-		outn ("  yy_cp_.*.* = yyg.yy_hold_char; // undo effects of setting up yytext ");
+		outn("pub fn REJECT(yyg: *yyguts_t, yy_cp_: *[*]allowzero u8) void {");
+		outn ("  yy_cp_.*[0] = yyg.yy_hold_char; // undo effects of setting up yytext ");
 		outn ("  yy_cp_.* = yyg.yy_full_match; // restore poss. backed-over text");
 
 		if (variable_trailing_context_rules) {
@@ -1919,11 +1920,12 @@ void make_tables (void)
 			outn ("\tif (yy_current_buffer.yy_is_interactive) {");
 			outn ("\t\tvar c: u8 = '*';");
 			outn ("\t\tvar n: usize = 0;");
+			outn ("\t\tc = try yyg.yyin_r.reader().readByte();");
 			outn ("\t\twhile(n < max_size) : (n += 1) {");
-			outn ("\t\t\tc = try yyg.yyin_r.reader().readByte();");
 			outn ("\t\t\tif (c == '\\n') break;");
-			outn ("\t\t}");
 			outn ("\t\t\tbuf[n] = c;");
+			outn ("\t\t\tc = try yyg.yyin_r.reader().readByte();");
+			outn ("\t\t}");
 			outn ("\t\tif ( c == '\\n' ) {");
 			outn ("\t\t\tbuf[n] = c;");
 			outn ("\t\t\tn += 1;");
