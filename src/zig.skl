@@ -1448,15 +1448,15 @@ m4_ifdef( [[M4_YY_NO_GET_IN]],,
 [[
 /// Get the input stream.
 pub inline fn yyget_in(yyg: *yyguts_t) std.fs.File {
-    return yyg.yyin;
+    return yyg.yyin_r;
 }
 ]])
 
 m4_ifdef( [[M4_YY_NO_GET_OUT]],,
 [[
 /// Get the output stream.
-pub inline fn yyget_out(yyg: *yyguts_t) std.fs.File {
-    return yyg.yyout;
+pub inline fn yyget_out(yyg: *yyguts_t) yyguts_t.OutType {
+    return yyg.yyout_r;
 }
 ]])
 
@@ -1530,14 +1530,14 @@ m4_ifdef( [[M4_YY_NO_SET_IN]],,
 /// @see yy_switch_to_buffer
 ///
 pub inline fn yyset_in(in_str: std.fs.File, yyg: *yyguts_t) void {
-    yyg.yyin = in_str ;
+    yyg.yyin_r = in_str ;
 }
 ]])
 
 m4_ifdef( [[M4_YY_NO_SET_OUT]],,
 [[
-pub inline fn yyset_out(out_str: std.fs.File, yyg: *yyguts_t) void {
-    yyg.yyout = out_str;
+pub inline fn yyset_out(out_dest: yyguts_t.OutType, yyg: *yyguts_t) void {
+    yyg.yyout_r = out_dest;
 }
 ]])
 

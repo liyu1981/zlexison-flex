@@ -1538,12 +1538,15 @@ void make_tables (void)
 	if (yymore_used && !yytext_is_array) {
 		indent_puts("yyg.yytext_r -= yyg.yy_more_len;");
 		indent_puts("// distance of (yyg.yytext_r to yy_cp) can only be negative during EOB switches, not here, so do follow trick to make yyleng_r always positive");
-		indent_puts("const d = ptrDistance(u8, yy_bp, yy_cp);");
+		indent_puts("const d = ptrDistance(u8, yyg.yytext_r, yy_cp);");
 		indent_puts("yyg.yyleng_r = if (d >= 0) @intCast(d) else 0;");
 	}
 
-	else
-		indent_puts ("yyg.yyleng_r = yy_cp - yy_bp;");
+	else {
+		indent_puts("// distance of (yyg.yytext_r to yy_cp) can only be negative during EOB switches, not here, so do follow trick to make yyleng_r always positive");
+		indent_puts("const d = ptrDistance(u8, yy_bp, yy_cp);");
+		indent_puts("yyg.yyleng_r = if (d >= 0) @intCast(d) else 0;");
+	}
 
 	/* Now also deal with copying yytext_ptr to yytext if needed. */
 	skelout ();		/* %% [3.0] - break point in skel */
@@ -1861,7 +1864,7 @@ void make_tables (void)
 			--indent_level;
 		}
 		else {
-			indent_puts("pub fn yymore(yyg: *yyguts_t) void {\n  yyg.yy_more_flag = 1;\n}");
+			indent_puts("pub inline fn yymore(yyg: *yyguts_t) void {\n  yyg.yy_more_flag = true;\n}");
 			//indent_puts
 			//	("#define yymore() (YY_G(yy_more_flag) = 1)");
 			// indent_puts
