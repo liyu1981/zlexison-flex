@@ -2304,7 +2304,8 @@ START_CODEBLOCK(true);
 case 2:
 YY_RULE_SETUP
 #line 171 "./scan.l"
-add_action("/*[""["); yy_push_state( COMMENT );
+// add_action("/*[""["); yy_push_state( COMMENT );
+add_action("\n[""["); yy_push_state( COMMENT );
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
@@ -2437,7 +2438,7 @@ ACTION_ECHO; ++linenum; /* maybe end of comment line */
 case 21:
 YY_RULE_SETUP
 #line 230 "./scan.l"
-ACTION_ECHO;
+add_action("// "); ACTION_ECHO;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
@@ -2455,14 +2456,15 @@ YY_RULE_SETUP
 case 24:
 YY_RULE_SETUP
 #line 236 "./scan.l"
-add_action("*/]""]"); yy_pop_state();
+// add_action("*/]""]"); yy_pop_state();
+add_action("]""]"); yy_pop_state();
 	YY_BREAK
 
 
 case 25:
 YY_RULE_SETUP
 #line 239 "./scan.l"
-ACTION_ECHO; yy_pop_state();
+ACTION_ECHO; add_action("\n"); yy_pop_state();
 	YY_BREAK
 
 
@@ -2556,7 +2558,7 @@ YY_RULE_SETUP
 case 40:
 YY_RULE_SETUP
 #line 274 "./scan.l"
-ACTION_ECHO;
+add_action("// "); ACTION_ECHO;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
@@ -3261,7 +3263,6 @@ case 146:
 YY_RULE_SETUP
 #line 567 "./scan.l"
 {
-
                 if (sf_skip_ws()){
                     /* We're in the middle of a (?x: ) pattern. */
                     yy_push_state(COMMENT_DISCARD);
@@ -3885,7 +3886,8 @@ bracelevel = 0;
 case 221:
 YY_RULE_SETUP
 #line 906 "./scan.l"
-ACTION_ECHO; yy_push_state( CODE_COMMENT );
+// ACTION_ECHO; yy_push_state( CODE_COMMENT );
+add_action("// "); yy_push_state( CODE_COMMENT );
 	YY_BREAK
 
 case 222:
