@@ -612,7 +612,7 @@ const char *skel[] = {
   "            std.debug.print(\"\\n\", .{});",
   "        }",
   "        if (yydebug) {",
-  "            std.debug.print(\"yy_act={d}, yy_current_state={d}\\n\", .{ yy_act, yy_current_state });",
+  "            std.debug.print(\"yy_act={d}, yy_current_state={d}, yytext={s}, yyleng={d}\\n\", .{ yy_act, yy_current_state, yyget_text(yyg), yyg.yyleng_r });",
   "        }",
   "",
   "%% [12.0] debug code goes here",

@@ -2558,7 +2558,7 @@ YY_RULE_SETUP
 case 40:
 YY_RULE_SETUP
 #line 274 "./scan.l"
-add_action("// "); ACTION_ECHO;
+if (yyleng >= 2 && yytext[0] == '/' && yytext[1] == '*') { add_action("// "); }; ACTION_ECHO;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
