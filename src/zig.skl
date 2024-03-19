@@ -976,16 +976,16 @@ pub fn input(yyg: *yyguts_t) !u8 {
     const yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
 	var c: u8 = undefined;
 
-	yyg.yy_c_buf_p.* = yyg.yy_hold_char;
+	yyg.yy_c_buf_p[0] = yyg.yy_hold_char;
 
-	if (yyg.yy_c_buf_p.* == YY_END_OF_BUFFER_CHAR) {
+	if (yyg.yy_c_buf_p[0] == YY_END_OF_BUFFER_CHAR) {
 		// yy_c_buf_p now points to the character we want to return.
 		// If this occurs *before* the EOB characters, then it's a
 		// valid NUL; if not, then we've hit the end of the buffer.
 		//
         if (ptrLessThan(yyg.yy_c_buf_p, yy_current_buffer.yy_ch_buf + yyg.yy_n_chars)) {
 			// This was really a NUL.
-			yyg.yy_c_buf_p.* = 0;
+			yyg.yy_c_buf_p[0] = 0;
 		} else {
             // need more input
             const offset: usize = @intCast(ptrDistance(u8, yyg.yytext_r, yyg.yy_c_buf_p));
@@ -1022,10 +1022,10 @@ pub fn input(yyg: *yyguts_t) !u8 {
 		}
     }
 
-	c = yyg.yy_c_buf_p.*; // cast for 8-bit char's
-	yyg.yy_c_buf_p.* = 0; // preserve yytext
+	c = yyg.yy_c_buf_p[0]; // cast for 8-bit char's
+	yyg.yy_c_buf_p[0] = 0; // preserve yytext
     yyg.yy_c_buf_p += 1;
-	yyg.yy_hold_char = yyg.yy_c_buf_p.*;
+	yyg.yy_hold_char = yyg.yy_c_buf_p[0];
 
 %% [19.0] update BOL and yylineno
 
