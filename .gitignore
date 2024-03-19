@@ -1,5 +1,6 @@
 src/flex
 src/zflex
+src/zig_skel.c
 *.orig
 *.rej
 *.tar.bz2
