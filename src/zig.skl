@@ -14,6 +14,9 @@ m4_changequote([[, ]])
 // zlex is built on top of flex: https://github.com/westes/flex
 // zlex is part of zlexison: https://github.com/liyu1981/zlexison
 
+const std = @import("std");
+const zlexison = @import("zlexison.zig");
+
 %#
 %# Lines in this skeleton starting with a "%" character are "control lines"
 %# and affect the generation of the scanner. The possible control codes are
@@ -40,6 +43,14 @@ m4_changequote([[, ]])
 %#   edit the skeleton.
 %#
 
+pub fn defineYYLexer(comptime args: struct {
+    YY_BUF_SIZE: usize = 32768,
+    YY_READ_BUF_SIZE: usize = 16384,
+    YY_EXIT_FAILURE: usize = 2,
+    YY_TERMINATED: usize = std.math.maxInt(usize),
+    YY_EXTRA_TYPE: ?type = null,
+}) type {
+return struct {
 pub const versions = struct {
     pub const zlex = "[[ZLEX_MAJOR_VERSION]].[[ZLEX_MINOR_VERSION]].[[ZLEX_SUBMINOR_VERSION]]";
     pub const flex = "[[FLEX_MAJOR_VERSION]].[[FLEX_MINOR_VERSION]].[[FLEX_SUBMINOR_VERSION]]";
@@ -55,18 +66,15 @@ m4_ifdef( [[M4_YY_REENTRANT]],  [[m4_define([[M4_YY_HAS_START_STACK_VARS]])]])
 
 %# remeber that we reuse all if-c-only for zig
 %if-c-only
-const std = @import("std");
 const Self = @This();
-const YYLexer = @This();
-const zlexison = @import("zlexison.zig");
 %endif
 
 pub const YY_NULL = 0;
 pub const YY_END_OF_BUFFER_CHAR = 0;
-pub const YY_BUF_SIZE = 32768;
-pub const YY_READ_BUF_SIZE = 16384;
-pub const YY_EXIT_FAILURE = 2;
-pub const YY_TERMINATED = std.math.maxInt(usize);
+pub const YY_BUF_SIZE = args.YY_BUF_SIZE;
+pub const YY_READ_BUF_SIZE = args.YY_READ_BUF_SIZE;
+pub const YY_EXIT_FAILURE = args.YY_EXIT_FAILURE;
+pub const YY_TERMINATED = args.YY_TERMINATED;
 pub const EOB_ACT_CONTINUE_SCAN = 0;
 pub const EOB_ACT_END_OF_FILE = 1;
 pub const EOB_ACT_LAST_MATCH = 2;
@@ -78,17 +86,17 @@ pub fn defaultYywarp(yyg: *yyguts_t) usize {
 
 pub var yywrap: *const fn(yyg: *yyguts_t) usize = defaultYywarp;
 
-pub fn defaultYyUserAction(lexer: *YYLexer) anyerror!void {
+pub fn defaultYyUserAction(lexer: *Self) anyerror!void {
     _ = lexer;
 }
 
-pub var YY_USER_ACTION: *const fn(lexer: *YYLexer) anyerror!void = defaultYyUserAction;
+pub var YY_USER_ACTION: *const fn(lexer: *Self) anyerror!void = defaultYyUserAction;
 
-pub fn defaultYyUserInit(lexer: *YYLexer) anyerror!void {
+pub fn defaultYyUserInit(lexer: *Self) anyerror!void {
     _ = lexer;
 }
 
-pub var YY_USER_INIT: *const fn(lexer: *YYLexer) anyerror!void = defaultYyUserInit;
+pub var YY_USER_INIT: *const fn(lexer: *Self) anyerror!void = defaultYyUserInit;
 
 pub const YYSTYPE = @import("zlexison.zig").YYSTYPE;
 pub const YYLTYPE = struct {
@@ -126,7 +134,7 @@ pub const YYLTYPE = struct {
         }
     }
 };
-pub const YY_EXTRA_TYPE = struct {};
+pub const YY_EXTRA_TYPE = if (args.YY_EXTRA_TYPE) |extra_type| extra_type else struct {};
 
 allocator: std.mem.Allocator = undefined,
 yyg: *yyguts_t = undefined,
@@ -1741,6 +1749,11 @@ pub fn yylex_destroy(this: *Self) void {
 }
 
 pub const deinit = yylex_destroy;
+
+}; // end of return struct
+} // end of defineYYLexer
+
+pub const YYLexer = defineYYLexer(.{});
 
 m4_ifdef([[M4_YY_MAIN]], [[
 pub fn main() !u8 {
