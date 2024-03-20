@@ -2199,6 +2199,9 @@ YY_DECL
 	char *yy_cp, *yy_bp;
 	int yy_act;
 
+    // just for handle comments in section 2 prologue
+    int section_2_prologue_comment_on = 0;
+
 	if ( !(yy_init) )
 		{
 		(yy_init) = 1;
@@ -2558,7 +2561,16 @@ YY_RULE_SETUP
 case 40:
 YY_RULE_SETUP
 #line 274 "./scan.l"
-if (yyleng >= 2 && yytext[0] == '/' && yytext[1] == '*') { add_action("// "); }; ACTION_ECHO;
+if (yyleng >= 2 && yytext[0] == '/' && yytext[1] == '*') { 
+    section_2_prologue_comment_on = 1;
+}; 
+if (section_2_prologue_comment_on) {
+    add_action("// "); 
+}
+    ACTION_ECHO;
+if (yyleng >=2 && yytext[yyleng-2] == '*' && yytext[yyleng-1] == '/') {
+    section_2_prologue_comment_on = 0;
+}
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
