@@ -246,8 +246,8 @@ pub inline fn YY_LESS_LINENO(n: usize, yyg: *yyguts_t) void {
     }
 }
 
-pub fn YY_LINENO_REWIND_TO(dst: [*]u8, yyg: *yyguts_t) void {
-    var p = yyg.yy_cp - 1;
+pub fn YY_LINENO_REWIND_TO(dst: [*]allowzero u8, yyg: *yyguts_t) void {
+    var p = yyg.yylex_vars.yy_cp_.* - 1;
     while (ptrLessEqlThan(dst, p)) : (p -= 1) {
         if (p[0] == '\n')
             yyg.yylineno_r -= 1;
@@ -388,8 +388,8 @@ pub inline fn YY_AT_BOL_AS(comptime T: type, yyg: *yyguts_t) T {
 
 /// Done after the current pattern has been matched and before the
 /// corresponding action - sets up yytext.
-pub fn YY_DO_BEFORE_ACTION(yy_cp: [*]u8, yy_bp: [*]u8, yyg: *yyguts_t) void {
-	yyg.yytext_r = yy_bp;
+pub fn YY_DO_BEFORE_ACTION(yy_cp: [*]allowzero u8, yy_bp: [*]allowzero u8, yyg: *yyguts_t) void {
+	yyg.yytext_r = @ptrCast(yy_bp);
 %% [2.0] code to fiddle yytext and yyleng for yymore() goes here
     yyg.yy_hold_char = yy_cp[0];
     yy_cp[0] = 0;
@@ -453,9 +453,9 @@ pub const yyguts_t = struct {
 
     // These are only needed for trailing context rules,
     // but there's no conditional variable for that yet.
-    yy_looking_for_trail_begin: c_int = undefined,
-    yy_full_lp: c_int = undefined,
-    yy_full_state: [*]allowzero c_int = @ptrFromInt(0),
+    yy_looking_for_trail_begin: usize = undefined,
+    yy_full_lp: usize = undefined,
+    yy_full_state: [*]allowzero usize = @ptrFromInt(0),
     ]])
 
     m4_ifdef( [[M4_YY_TEXT_IS_ARRAY]],
@@ -478,18 +478,21 @@ pub const yyguts_t = struct {
     yylloc_r: *YYLTYPE = undefined,
     ]])
 
+    yylex_vars: struct {
+        yy_cp_: *[*]allowzero u8 = undefined,
+        yy_bp_: *[*]allowzero u8 = undefined,
+        yy_act_: *usize = undefined,
+        yy_current_state_: *usize = undefined,
+    } = .{},
+
     pub fn updateYylloc(yyg: *yyguts_t) void {
-        yyg.yylloc_r.first_line = yyg.yylineno_r;
-        yyg.yylloc_r.first_column = yyg.yycolumn_r;
         yyg.yylloc_r.last_line = yyg.yylineno_r;
         yyg.yylloc_r.last_column = yyg.yycolumn_r;
         for (0..yyg.yyleng_r) |i| {
             if (yyg.yytext_r[i] == '\n') {
-                yyg.yylloc_r.last_line += 1;
-                yyg.yylloc_r.last_column = 0;
-            } else {
-                yyg.yylloc_r.last_column += 1;
+                continue;
             }
+            yyg.yylloc_r.last_column += 1;
         }
     }
 };
@@ -563,6 +566,40 @@ m4_ifdef( [[<M4_YY_BISON_LLOC>]],
 
 %% [6.0] YY_RULE_SETUP definition goes here
 
+pub fn yy_get_last_loc(yyg: *yyguts_t) !struct {
+    lineno: usize,
+    column: usize,
+} {
+    var lineno: usize = yyg.yylineno_r;
+    var column: usize = yyg.yycolumn_r;
+    const yy_act = yyg.yylex_vars.yy_act_.*;
+    if (yy_act > yy_rule_can_match_eol.len) {
+        return error.YYActOutOfBounds;
+    }
+    if (!(yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] != 0)) {
+        for (0..yyg.yyleng_r) |i| {
+            if (yyg.yytext_r[i] == '\n') {
+                lineno += 1;
+                column = 0;
+            } else {
+                column += 1;
+            }
+        }
+    }
+    return .{ .lineno = lineno, .column = column };
+}
+
+fn yy_update_loc(yyg: *yyguts_t) void {
+    const last_loc = yy_get_last_loc(yyg) catch |err| switch (err) {
+        error.YYActOutOfBounds => {
+            return;
+        },
+        else => unreachable,
+    };
+    yyg.yylineno_r = last_loc.lineno;
+    yyg.yycolumn_r = last_loc.column;
+}
+
 /// The main scanner function which does all the work.
 pub fn yylex M4_YY_LEX_PROTO !usize {
     var yy_cp: [*]allowzero u8 = @ptrFromInt(0);
@@ -573,7 +610,16 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
     yyg.yylval_r = yylval_;
     yyg.yylloc_r = yylloc_;
 
+    // restore the correct lineno and column from yylloc when yylex is called
+    yyg.yylineno_r = yylloc_.last_line;
+    yyg.yycolumn_r = yylloc_.last_column;
+
     var yy_current_state: usize = 0;
+
+    yyg.yylex_vars.yy_cp_ = &yy_cp;
+    yyg.yylex_vars.yy_bp_ = &yy_bp;
+    yyg.yylex_vars.yy_act_ = &yy_act;
+    yyg.yylex_vars.yy_current_state_ = &yy_current_state;
 
     // simulate goto with step&start - definition start
     const LOOP_STEP_YY_ACT = 0x0001;
@@ -624,9 +670,15 @@ pub fn yylex M4_YY_LEX_PROTO !usize {
 		yy_load_buffer_state(yyg);
 	}
 
+    defer this.yyg.updateYylloc();
+
 %% [7.0] user's declarations go here
 
+
     while (true) { // /* loops until end-of-file is reached */
+        yyg.yylloc_r.first_line = yyg.yylineno_r;
+        yyg.yylloc_r.first_column = yyg.yycolumn_r;
+
         // LOOP_START_INIT
         if (loop_control & LOOP_STEP_INIT > 0) {
             // yymore()-related code

@@ -178,7 +178,7 @@ void gen_bu_action (void)
 
 	indent_puts ("0 => { // must back up");
 	indent_puts ("// undo the effects of YY_DO_BEFORE_ACTION");
-	indent_puts ("yy_cp.* = yyg.yy_hold_char;");
+	indent_puts ("yy_cp[0] = yyg.yy_hold_char;");
 
 	if (fullspd || fulltbl)
 		indent_puts ("yy_cp = YY_G(yy_last_accepting_cpos) + 1;");
@@ -188,7 +188,7 @@ void gen_bu_action (void)
 		 */
 		indent_puts ("yy_cp = yyg.yy_last_accepting_cpos;");
 
-	indent_puts ("yy_current_state_.* = yyg.yy_last_accepting_state;");
+	indent_puts ("yy_current_state = yyg.yy_last_accepting_state;");
 	indent_puts ("// goto yy_find_action;");
   indent_puts ("loop_control = LOOP_START_YY_FIND_ACTION;");
   indent_puts ("continue;");
@@ -537,8 +537,8 @@ void gen_find_action (void)
 
 		if (variable_trailing_context_rules) {
 			indent_puts
-				("if ( yy_act & YY_TRAILING_HEAD_MASK ||");
-			indent_puts ("     YY_G(yy_looking_for_trail_begin) )");
+				("if ( yy_act & YY_TRAILING_HEAD_MASK != 0 or");
+			indent_puts ("     YY_G(yy_looking_for_trail_begin) != 0 )");
 			++indent_level;
 			indent_puts ("{");
 
@@ -547,7 +547,7 @@ void gen_find_action (void)
 			++indent_level;
 			indent_puts ("{");
 			indent_puts ("YY_G(yy_looking_for_trail_begin) = 0;");
-			indent_puts ("yy_act &= ~YY_TRAILING_HEAD_MASK;");
+			indent_puts ("yy_act &= ~@as(usize, YY_TRAILING_HEAD_MASK);");
 			indent_puts ("break;");
 			indent_puts ("}");
 			--indent_level;
@@ -556,11 +556,11 @@ void gen_find_action (void)
 			--indent_level;
 
 			indent_puts
-				("else if ( yy_act & YY_TRAILING_MASK )");
+				("else if ( yy_act & YY_TRAILING_MASK != 0 )");
 			++indent_level;
 			indent_puts ("{");
 			indent_puts
-				("YY_G(yy_looking_for_trail_begin) = yy_act & ~YY_TRAILING_MASK;");
+				("YY_G(yy_looking_for_trail_begin) = yy_act & ~@as(usize, YY_TRAILING_MASK);");
 			indent_puts
 				("YY_G(yy_looking_for_trail_begin) |= YY_TRAILING_HEAD_MASK;");
 
@@ -589,8 +589,8 @@ void gen_find_action (void)
 			indent_puts ("}");
 			--indent_level;
 
-			indent_puts ("++YY_G(yy_lp);");
-			indent_puts ("loop_control = LOOP_START_FIND_RULE;");
+			indent_puts ("YY_G(yy_lp) += 1;");
+			indent_puts ("loop_control = LOOP_START_YY_FIND_RULE;");
 			indent_puts ("continue;");
 			// indent_puts ("goto find_rule;");
 		}
@@ -1797,23 +1797,24 @@ void make_tables (void)
 				outn ("static int *yy_full_state;");
 			}
 
-			out_hex ("#define YY_TRAILING_MASK 0x%x\n",
+			out_hex ("const YY_TRAILING_MASK = 0x%x;\n",
 				 (unsigned int) YY_TRAILING_MASK);
-			out_hex ("#define YY_TRAILING_HEAD_MASK 0x%x\n",
+			out_hex ("const YY_TRAILING_HEAD_MASK = 0x%x;\n",
 				 (unsigned int) YY_TRAILING_HEAD_MASK);
+			outn ("");
 		}
 
 		outn ("// use REJECT as:");
 		outn ( "//   REJECT(yyg); loop_control = LOOP_START_YY_FIND_RULE; continue;");
 		outn ("// or use <REJECT> in code, generator will replace it");
-		outn("pub fn REJECT(yyg: *yyguts_t, yy_cp_: *[*]allowzero u8) void {");
-		outn ("  yy_cp_.*[0] = yyg.yy_hold_char; // undo effects of setting up yytext ");
-		outn ("  yy_cp_.* = yyg.yy_full_match; // restore poss. backed-over text");
+		outn("pub fn REJECT(yyg: *yyguts_t) void {");
+		outn ("  yyg.yylex_vars.yy_cp_.*[0] = yyg.yy_hold_char; // undo effects of setting up yytext ");
+		outn ("  yyg.yylex_vars.yy_cp_.* = yyg.yy_full_match; // restore poss. backed-over text");
 
 		if (variable_trailing_context_rules) {
-			outn ("YY_G(yy_lp) = YY_G(yy_full_lp); /* restore orig. accepting pos. */ \\");
-			outn ("YY_G(yy_state_ptr) = YY_G(yy_full_state); /* restore orig. state */ \\");
-			outn ("yy_current_state = *YY_G(yy_state_ptr); /* restore curr. state */ \\");
+			outn ("YY_G(yy_lp) = YY_G(yy_full_lp); // restore orig. accepting pos.");
+			outn ("YY_G(yy_state_ptr) = YY_G(yy_full_state); // restore orig. state");
+			outn ("yyg.yylex_vars.yy_current_state_.* = YY_G(yy_state_ptr)[0]; // restore curr. state");
 		}
 
 		outn ("  yyg.yy_lp += 1;");
@@ -1955,9 +1956,9 @@ void make_tables (void)
 		--indent_level;
 	}
 	indent_puts ("try YY_USER_ACTION(this);");
-	indent_puts ("this.yyg.updateYylloc();");
-	indent_puts ("yyset_lineno(this.yyg.yylloc_r.last_line, this.yyg);");
-	indent_puts ("yyset_column(this.yyg.yylloc_r.last_column, this.yyg);");
+	// indent_puts ("this.yyg.updateYylloc();");
+	// indent_puts ("yyset_lineno(this.yyg.yylloc_r.last_line, this.yyg);");
+	// indent_puts ("yyset_column(this.yyg.yylloc_r.last_column, this.yyg);");
 	indent_puts ("}");
 	--indent_level;
 
@@ -2001,24 +2002,26 @@ void make_tables (void)
 
 	skelout ();		/* %% [11.0] - break point in skel */
 	outn ("m4_ifdef( [[M4_YY_USE_LINENO]],[[");
-	// indent_puts
-	// 	("if ( yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] != 0) {");
-	// ++indent_level;
-	// out_str ("var yyl = %s;\n",
-	// 	 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
-	//			"YY_G(yy_more_len)") : "0");
-	// do_indent ();
-	// outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
-	// ++indent_level;
-	// indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' ) {");
-	// ++indent_level;
-	// indent_puts ("M4_YY_INCR_LINENO()");
-	// indent_puts ("}");
-	// --indent_level;
-	// indent_puts ("}");
-	// --indent_level;
-	// indent_puts ("}");
-	// --indent_level;
+	indent_puts
+		("if ( yy_act != YY_END_OF_BUFFER and yy_rule_can_match_eol[yy_act] != 0) {");
+	++indent_level;
+	out_str ("var yyl = %s;\n",
+		 yymore_used ? (yytext_is_array ? "YY_G(yy_prev_more_offset)" :
+				"YY_G(yy_more_len)") : "0");
+	do_indent ();
+	outn ("while(yyl < yyg.yyleng_r) : (yyl += 1) {");
+	++indent_level;
+	indent_puts ("if ( yyg.yytext_r[yyl] == '\\n' ) {");
+	++indent_level;
+	indent_puts ("M4_YY_INCR_LINENO()");
+	indent_puts ("} else {");
+	indent_puts (" yyg.yycolumn_r += 1;");
+	indent_puts ("}");
+	--indent_level;
+	indent_puts ("}");
+	--indent_level;
+	indent_puts ("}");
+	--indent_level;
 	outn ("]])");
 
 	skelout ();		/* %% [12.0] - break point in skel */

@@ -249,16 +249,17 @@ void    finish_rule (int mach, int variable_trail_rule, int headcnt, int trailcn
 			char   *scanner_bp = "yy_bp";
 
 			add_action
-				("yy_cp.* = yyg.yy_hold_char; // undo effects of setting up yytext\n");
+				("yy_cp[0] = yyg.yy_hold_char; // undo effects of setting up yytext\n");
 
 			if (headcnt > 0) {
 				if (rule_has_nl[num_rules]) {
 					snprintf (action_text, sizeof(action_text),
-						"YY_LINENO_REWIND_TO(%s + %d);\n", scanner_bp, headcnt);
+						"YY_LINENO_REWIND_TO(%s + %d, yyg);\n", scanner_bp, headcnt);
 					add_action (action_text);
 				}
-				snprintf (action_text, sizeof(action_text), "%s = %s + %d;\n",
-					 scanner_cp, scanner_bp, headcnt);
+
+				snprintf (action_text, sizeof(action_text), "yy_cp = %s + %d;\n%s;\n",
+					 scanner_bp, headcnt, scanner_cp);
 				add_action (action_text);
 			}
 
@@ -280,7 +281,7 @@ void    finish_rule (int mach, int variable_trail_rule, int headcnt, int trailcn
 			}
 
 			add_action
-				("YY_DO_BEFORE_ACTION(&yy_cp, &yy_bp, this.yyg); // set up yytext again\n");
+				("YY_DO_BEFORE_ACTION(yy_cp, yy_bp, this.yyg); // set up yytext again\n");
 		}
 	}
 

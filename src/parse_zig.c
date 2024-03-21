@@ -1505,7 +1505,7 @@ yyreduce:
 			else
 				add_action( "try ECHO(yyg)" );
 
-			add_action( ";\n\t},]]\n" );
+			add_action( ";\n{ yy_update_loc(yyg); }\n\t},]]\n" );
 			}
 #line 1504 "parse.c"
     break;
