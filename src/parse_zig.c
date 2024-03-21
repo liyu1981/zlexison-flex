@@ -1505,7 +1505,7 @@ yyreduce:
 			else
 				add_action( "try ECHO(yyg)" );
 
-			add_action( ";\n{ yy_update_loc(yyg); }\n\t},]]\n" );
+			add_action( ";\n{ yy_update_loc(yyg); }}\n\t},]]\n" );
 			}
 #line 1504 "parse.c"
     break;
@@ -2816,7 +2816,7 @@ void build_eof_action(void)
 			add_action( action_text );
 			}
 		}
-    add_action (" => {");
+    add_action (" => {{");
 
 	line_directive_out(NULL, 1);
         add_action("[[");

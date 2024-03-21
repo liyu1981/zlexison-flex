@@ -3987,7 +3987,7 @@ YY_RULE_SETUP
                 ACTION_ECHO;
                 if (bracelevel <= 0) {
                    if ( doing_rule_action )
-                      add_action( "\t\n{ yy_update_loc(yyg); }\n},]""]\n" );
+                      add_action( "\t\n}\n{ yy_update_loc(yyg); }\n},]""]\n" );
 
                    doing_rule_action = false;
                    BEGIN(SECT2);

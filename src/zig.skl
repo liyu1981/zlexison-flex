@@ -1424,10 +1424,10 @@ pub fn yy_push_state(new_state: usize, yyg: *yyguts_t) !void {
 
         if (@intFromPtr(yyg.yy_start_stack) == 0) {
             yyg.yy_start_stack_arr = try yyg.lexer_.allocator.alloc(usize, new_size);
-            yyg.yy_start_stack = yyg.yy_buffer_stack_arr.ptr;
+            yyg.yy_start_stack = yyg.yy_start_stack_arr.ptr;
         } else {
-            yyg.yy_buffer_stack_arr = try yyg.lexer_.allocator.realloc(yyg.yy_start_stack_arr, new_size);
-            yyg.yy_start_stack = yyg.yy_buffer_stack_arr.ptr;
+            yyg.yy_start_stack_arr = try yyg.lexer_.allocator.realloc(yyg.yy_start_stack_arr, new_size);
+            yyg.yy_start_stack = yyg.yy_start_stack_arr.ptr;
         }
 
         yyg.yy_start_stack[yyg.yy_start_stack_ptr] = YY_START(yyg);
@@ -1763,17 +1763,19 @@ pub fn yy_init_globals(yyg: *yyguts_t) void {
 
 pub fn yylex_destroy(this: *Self) void {
     var yyg = this.yyg;
-    var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-    // Pop the buffer stack, destroying each element.
-    while (@intFromPtr(yy_current_buffer) != 0) {
-        yy_delete_buffer(@ptrCast(yy_current_buffer), yyg);
-        yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = @ptrFromInt(0);
-        yypop_buffer_state(yyg);
-        yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
-    }
+    if (@intFromPtr(yyg.yy_buffer_stack) != 0) {
+        var yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        // Pop the buffer stack, destroying each element.
+        while (@intFromPtr(yy_current_buffer) != 0) {
+            yy_delete_buffer(@ptrCast(yy_current_buffer), yyg);
+            yyg.yy_buffer_stack[yyg.yy_buffer_stack_top] = @ptrFromInt(0);
+            yypop_buffer_state(yyg);
+            yy_current_buffer = yyg.yy_buffer_stack[yyg.yy_buffer_stack_top];
+        }
 
-	// Destroy the stack itself.
-    this.allocator.free(yyg.yy_buffer_stack_arr);
+        // Destroy the stack itself.
+        this.allocator.free(yyg.yy_buffer_stack_arr);
+    }
 
     m4_ifdef( [[M4_YY_HAS_START_STACK_VARS]],
     [[
@@ -1790,9 +1792,7 @@ pub fn yylex_destroy(this: *Self) void {
 
     // Reset the globals. This is important in a non-reentrant scanner so the
     // next time yylex() is called, initialization will occur.
-    yy_init_globals(yyg);
-
-    yyg.lexer_.allocator.free(yyg.yy_state_arr);
+    // yy_init_globals(yyg);
 
     yyg.arena.deinit();
 
