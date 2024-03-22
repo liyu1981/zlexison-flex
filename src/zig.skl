@@ -43,7 +43,13 @@ const zlexison = @import("zlexison.zig");
 %#   edit the skeleton.
 %#
 
+/// defineYYLexer will return an definition of YYLexer in comptime. Normally can just rely on the default YYLexer
+/// defined later in this file as it is already reentrant. But when want to use in pthreads with different
+/// YY_USER_INIT/YY_USER_ACTION etc, args.YYLEXER_DEFID must to unique, otherwise the generated definition will be
+/// same. And due to https://ziggit.dev/t/global-comptime-counter/2874, there is no better way of removing
+/// YYLEXER_DEFID.
 pub fn defineYYLexer(comptime args: struct {
+    YYLEXER_DEFID: []const u8 = "default",
     YY_BUF_SIZE: usize = 32768,
     YY_READ_BUF_SIZE: usize = 16384,
     YY_EXIT_FAILURE: usize = 2,
@@ -55,6 +61,8 @@ pub const versions = struct {
     pub const zlex = "[[ZLEX_MAJOR_VERSION]].[[ZLEX_MINOR_VERSION]].[[ZLEX_SUBMINOR_VERSION]]";
     pub const flex = "[[FLEX_MAJOR_VERSION]].[[FLEX_MINOR_VERSION]].[[FLEX_SUBMINOR_VERSION]]";
 };
+
+pub const defid = args.YYLEXER_DEFID;
 
 %# Some negated symbols
 m4_ifdef( [[M4_YY_IN_HEADER]], , [[m4_define([[M4_YY_NOT_IN_HEADER]], [[]])]])
